@@ -1,0 +1,4637 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+<Item class="ReplicatedStorage" referent="RBX5"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="Folder" referent="RBX4"><Properties><string name="Name">Shared</string></Properties><Item class="ModuleScript" referent="RBX1"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[--[[
+	Config — every tunable number, action, piece of furniture and NPC lives here.
+	Both server and client read this module, so UI text always matches game rules.
+
+	Need values run 0..100 where HIGHER IS BETTER (100 = fully satisfied).
+]]
+
+local C = Color3.fromRGB
+
+local Config = {}
+
+Config.GameName = "Bahay Buhay"
+Config.Version = "0.1.0"
+
+Config.StartingPesos = 1000 -- "puhunan" for new players
+Config.DayLengthMinutes = 14 -- real-time minutes per in-game day
+Config.StartClockTime = 7 -- 7:00 AM
+Config.MorningHour = 6 -- bills are collected and a new "Araw" begins
+Config.AutosaveSeconds = 120
+Config.DataStoreName = "BahayBuhay_v1"
+
+Config.WalkSpeed = 16
+Config.TiredWalkSpeed = 9
+
+-- Building
+Config.LotHalfSize = 27 -- furniture must be within ±27 studs of the lot centre
+Config.MaxBuildHeight = 14
+Config.MaxFurniturePerLot = 40
+Config.SellRefund = 0.6
+
+-- Bills ("Bayarin sa kuryente at tubig") charged every morning
+Config.BillBase = 25
+Config.BillPerFurniture = 5
+
+--------------------------------------------------------------------------
+-- NEEDS
+--------------------------------------------------------------------------
+Config.NeedOrder = { "Hunger", "Energy", "Hygiene", "Fun", "Social", "Bladder" }
+
+Config.Needs = {
+	Hunger = {
+		label = "Kabusugan",
+		english = "Hunger",
+		icon = "🍚",
+		decayPerMinute = 11,
+		color = C(242, 153, 74),
+		lowText = "Kumakalam na ang sikmura mo! Kumain ka na.",
+	},
+	Energy = {
+		label = "Lakas",
+		english = "Energy",
+		icon = "⚡",
+		decayPerMinute = 7,
+		color = C(250, 210, 70),
+		lowText = "Antok na antok ka na. Matulog ka muna.",
+	},
+	Hygiene = {
+		label = "Kalinisan",
+		english = "Hygiene",
+		icon = "🧼",
+		decayPerMinute = 6,
+		color = C(110, 190, 240),
+		lowText = "Medyo amoy-araw ka na... Maligo ka na!",
+	},
+	Fun = {
+		label = "Saya",
+		english = "Fun",
+		icon = "🎉",
+		decayPerMinute = 9,
+		color = C(235, 110, 180),
+		lowText = "Nabo-bore ka na. Maglibang ka naman!",
+	},
+	Social = {
+		label = "Pakikisama",
+		english = "Social",
+		icon = "💬",
+		decayPerMinute = 7,
+		color = C(150, 120, 240),
+		lowText = "Nalulungkot ka. Makipagkwentuhan ka sa kapitbahay!",
+	},
+	Bladder = {
+		label = "Banyo",
+		english = "Bladder",
+		icon = "🚽",
+		decayPerMinute = 14,
+		color = C(120, 210, 150),
+		lowText = "Ihing-ihi ka na! Hanapin ang CR!",
+	},
+}
+
+-- Mood is derived from the average of all needs. payMult scales job income.
+Config.Moods = {
+	{ min = 75, label = "Masayang-masaya", color = C(80, 220, 120), payMult = 1.2 },
+	{ min = 55, label = "Ayos lang", color = C(190, 230, 90), payMult = 1.0 },
+	{ min = 35, label = "Medyo malungkot", color = C(245, 180, 60), payMult = 0.9 },
+	{ min = -1, label = "Pagod at stressed", color = C(235, 80, 70), payMult = 0.75 },
+}
+
+function Config.getMood(average: number)
+	for _, mood in Config.Moods do
+		if average >= mood.min then
+			return mood
+		end
+	end
+	return Config.Moods[#Config.Moods]
+end
+
+--------------------------------------------------------------------------
+-- SKILLS (Kasanayan)
+--------------------------------------------------------------------------
+Config.SkillOrder = { "Pagluluto", "Pagkanta", "Basketball", "Pangingisda", "Pagmamaneho", "Pagtitinda" }
+Config.Skills = {
+	Pagluluto = { label = "Pagluluto", english = "Cooking", icon = "🍳" },
+	Pagkanta = { label = "Pagkanta", english = "Singing", icon = "🎤" },
+	Basketball = { label = "Basketball", english = "Basketball", icon = "🏀" },
+	Pangingisda = { label = "Pangingisda", english = "Fishing", icon = "🎣" },
+	Pagmamaneho = { label = "Pagmamaneho", english = "Driving", icon = "🚌" },
+	Pagtitinda = { label = "Pagtitinda", english = "Selling", icon = "🧺" },
+}
+Config.XpPerLevel = 25
+Config.MaxSkillLevel = 10
+Config.SkillEffectBonus = 0.06 -- +6% need gain per level on skillBoost actions
+Config.SkillPayBonus = 0.08 -- +8% pay per level on payBoost jobs
+
+function Config.skillLevel(xp: number?)
+	return math.min(Config.MaxSkillLevel, math.floor((xp or 0) / Config.XpPerLevel))
+end
+
+--------------------------------------------------------------------------
+-- RELATIONSHIPS (Relasyon)
+--------------------------------------------------------------------------
+Config.RelationshipLevels = {
+	{ min = 85, label = "Parang Kapamilya" },
+	{ min = 60, label = "Matalik na Kaibigan" },
+	{ min = 30, label = "Kaibigan" },
+	{ min = 10, label = "Kakilala" },
+	{ min = -1, label = "Hindi pa Kilala" },
+}
+Config.RelationshipDailyDecay = 2
+
+function Config.relationshipLabel(value: number?)
+	value = value or 0
+	for _, level in Config.RelationshipLevels do
+		if value >= level.min then
+			return level.label
+		end
+	end
+	return Config.RelationshipLevels[#Config.RelationshipLevels].label
+end
+
+--------------------------------------------------------------------------
+-- ACTIONS
+--	label         : menu text
+--	verb          : progress-bar text while doing it
+--	bubble        : emoji thought-bubble shown over the head
+--	duration      : seconds
+--	cost / pay    : pesos spent up-front / earned over the duration
+--	effects       : total need change over the full duration
+--	pose          : "stand" (default) or "lie"
+--	hours         : {open, close} in-game hours when the action is allowed
+--	skill/skillXp : skill trained and xp gained for a full run
+--	skillBoost    : positive effects scale with the skill level
+--	payBoost      : pay scales with the skill level
+--	socialNearby  : extra Social gained if another player is within 18 studs
+--	relationship  : relationship points with the NPC on completion
+--	doneMessages  : one is picked at random when finished
+--	doneHook      : special completion logic ("VideokeScore", "Fishing")
+--------------------------------------------------------------------------
+Config.Actions = {
+	-- Tulugan
+	Matulog = { label = "Matulog", verb = "Natutulog", bubble = "💤", duration = 30, pose = "lie",
+		effects = { Energy = 85 }, doneMessages = { "Ang sarap ng tulog mo!" } },
+	MatulogKama = { label = "Matulog sa kama", verb = "Natutulog", bubble = "💤", duration = 30, pose = "lie",
+		effects = { Energy = 100, Fun = 5 }, doneMessages = { "Gising na! Ang himbing ng tulog mo." } },
+	Idlip = { label = "Umidlip", verb = "Umiidlip", bubble = "😴", duration = 12, pose = "lie",
+		effects = { Energy = 30 } },
+	Nahimatay = { label = "Bumagsak sa pagod", verb = "Nakatulog sa sahig", bubble = "😵", duration = 15, pose = "lie",
+		effects = { Energy = 35, Fun = -10, Hygiene = -5 }, special = true },
+
+	-- Kusina
+	LutoSinangag = { label = "Magluto ng Sinangag at Itlog", verb = "Nagluluto ng sinangag", bubble = "🍳", duration = 8,
+		cost = 30, effects = { Hunger = 40 }, skill = "Pagluluto", skillXp = 3, skillBoost = true,
+		doneMessages = { "Ang bango ng sinangag na may bawang!" } },
+	LutoAdobo = { label = "Magluto ng Adobo", verb = "Nagluluto ng adobo", bubble = "🍗", duration = 12,
+		cost = 60, effects = { Hunger = 65 }, skill = "Pagluluto", skillXp = 5, skillBoost = true,
+		doneMessages = { "Adobo na naman? Pero ang sarap pa rin!", "Tamang-tama ang asim at alat ng adobo mo." } },
+	LutoPancit = { label = "Magluto ng Pancit Bihon", verb = "Nagluluto ng pancit", bubble = "🍜", duration = 10,
+		cost = 50, effects = { Hunger = 55, Social = 5 }, skill = "Pagluluto", skillXp = 4, skillBoost = true,
+		doneMessages = { "Pancit para humaba ang buhay!" } },
+	LutoSinigang = { label = "Magluto ng Sinigang", verb = "Nagluluto ng sinigang", bubble = "🍲", duration = 14,
+		cost = 80, effects = { Hunger = 75, Fun = 5 }, skill = "Pagluluto", skillXp = 6, skillBoost = true,
+		doneMessages = { "Ang asim-asim ng sinigang! Panalo." } },
+	Merienda = { label = "Mag-merienda", verb = "Nagme-merienda", bubble = "🍞", duration = 8,
+		cost = 20, effects = { Hunger = 25, Social = 5 } },
+
+	-- Banyo
+	Maligo = { label = "Maligo (timba at tabo)", verb = "Naliligo", bubble = "🚿", duration = 12,
+		effects = { Hygiene = 90, Energy = 5 }, doneMessages = { "Presko ka na ulit!" } },
+	MagCR = { label = "Gumamit ng CR", verb = "Nasa CR", bubble = "🚽", duration = 6,
+		effects = { Bladder = 100, Hygiene = -3 } },
+	Maghilamos = { label = "Maghilamos sa poso", verb = "Naghihilamos", bubble = "💧", duration = 5,
+		effects = { Hygiene = 25, Energy = 5 } },
+
+	-- Libangan
+	Teleserye = { label = "Manood ng teleserye", verb = "Nanonood ng teleserye", bubble = "📺", duration = 20,
+		effects = { Fun = 45, Energy = -3 },
+		doneMessages = { "Grabe ang twist sa teleserye ngayong gabi!", "Iyak ka nang iyak sa episode." } },
+	Balita = { label = "Manood ng balita", verb = "Nanonood ng balita", bubble = "📰", duration = 10,
+		effects = { Fun = 15, Social = 5 } },
+	Kumanta = { label = "Kumanta sa videoke", verb = "Bumibirit sa videoke", bubble = "🎤", duration = 15,
+		effects = { Fun = 45, Energy = -5 }, socialNearby = 20, skill = "Pagkanta", skillXp = 5, skillBoost = true,
+		doneHook = "VideokeScore" },
+	Basketball = { label = "Maglaro ng basketball", verb = "Nagbabasketball", bubble = "🏀", duration = 18,
+		effects = { Fun = 50, Energy = -15, Hygiene = -15, Hunger = -5 }, socialNearby = 15,
+		skill = "Basketball", skillXp = 6,
+		doneMessages = { "Swak! Three points!", "Ang galing ng crossover mo!", "Muntik na ang buzzer-beater!" } },
+	Magduyan = { label = "Magduyan", verb = "Nagduduyan", bubble = "🌴", duration = 15, pose = "lie",
+		effects = { Energy = 25, Fun = 20 } },
+	Magpahangin = { label = "Magpahangin", verb = "Nagpapahangin", bubble = "🌀", duration = 8,
+		effects = { Energy = 10, Fun = 10 } },
+	Magdasal = { label = "Magdasal", verb = "Nagdarasal", bubble = "🙏", duration = 8,
+		effects = { Fun = 15, Social = 5 } },
+	Diligan = { label = "Diligan ang sampaguita", verb = "Nagdidilig", bubble = "🌼", duration = 5,
+		effects = { Fun = 10 } },
+	Magbihis = { label = "Magbihis", verb = "Nagbibihis", bubble = "👕", duration = 5,
+		effects = { Hygiene = 10, Fun = 5 } },
+	Magsimba = { label = "Magsimba", verb = "Nagsisimba", bubble = "⛪", duration = 15, hours = { 6, 19 },
+		effects = { Fun = 15, Social = 25 } },
+
+	-- Sari-sari store ni Aling Nena
+	BiliPandesal = { label = "Pandesal", verb = "Kumakain ng pandesal", bubble = "🥖", duration = 4,
+		cost = 10, effects = { Hunger = 12 } },
+	BiliTuron = { label = "Turon", verb = "Kumakain ng turon", bubble = "🍌", duration = 4,
+		cost = 15, effects = { Hunger = 15, Fun = 3 } },
+	BiliBalut = { label = "Balut", verb = "Humihigop ng balut", bubble = "🥚", duration = 5,
+		cost = 20, effects = { Hunger = 18, Fun = 5 } },
+	BiliKakanin = { label = "Kakanin (puto at kutsinta)", verb = "Kumakain ng kakanin", bubble = "🍡", duration = 5,
+		cost = 25, effects = { Hunger = 22 } },
+	BiliPalamig = { label = "Palamig (sago't gulaman)", verb = "Umiinom ng palamig", bubble = "🥤", duration = 4,
+		cost = 15, effects = { Hunger = 5, Fun = 8, Energy = 5 } },
+
+	-- Karinderya (turo-turo)
+	Tapsilog = { label = "Tapsilog", verb = "Kumakain ng tapsilog", bubble = "🍳", duration = 10,
+		cost = 90, effects = { Hunger = 70, Energy = 5 } },
+	Lugaw = { label = "Lugaw na may tokwa't baboy", verb = "Humihigop ng lugaw", bubble = "🥣", duration = 8,
+		cost = 35, effects = { Hunger = 35, Energy = 10 } },
+	HaloHalo = { label = "Halo-halo", verb = "Kumakain ng halo-halo", bubble = "🍧", duration = 8,
+		cost = 60, effects = { Hunger = 20, Fun = 20 } },
+
+	-- Trabaho (jobs)
+	DriveJeep = { label = "Mamasada ng jeep", verb = "Namamasada", bubble = "🚌", duration = 30, job = true,
+		pay = 220, hours = { 5, 22 }, effects = { Energy = -18, Fun = -8, Hunger = -10, Hygiene = -8 },
+		skill = "Pagmamaneho", skillXp = 6, payBoost = true,
+		doneMessages = { "Bayad po! Ang daming pasahero ngayon.", "Para po! Tapos na ang biyahe mo." } },
+	Magtinda = { label = "Magtinda sa palengke", verb = "Nagtitinda", bubble = "🧺", duration = 25, job = true,
+		pay = 160, hours = { 4, 18 }, effects = { Energy = -12, Fun = -5, Hunger = -8, Social = 10 },
+		skill = "Pagtitinda", skillXp = 6, payBoost = true,
+		doneMessages = { "Suki ka na ng mga mamimili!", "Ubos ang paninda mo ngayon!" } },
+	Mangisda = { label = "Mangisda sa bangka", verb = "Nangingisda", bubble = "🎣", duration = 28, job = true,
+		pay = 190, effects = { Energy = -15, Hygiene = -12, Hunger = -10, Fun = 5 },
+		skill = "Pangingisda", skillXp = 6, payBoost = true, doneHook = "Fishing" },
+
+	-- Kapitbahay (NPC)
+	Kwentuhan = { label = "Makipagkwentuhan", verb = "Nakikipagkwentuhan", bubble = "💬", duration = 10,
+		effects = { Social = 35, Fun = 5 }, relationship = 6 },
+	Chismis = { label = "Makichismis", verb = "Nakikichismis", bubble = "🤭", duration = 10,
+		effects = { Social = 30, Fun = 12 }, relationship = 4,
+		doneMessages = { "Ay, totoo ba 'yan?!", "Huwag mong ipagsasabi ha... sa'yo lang 'to." } },
+	Magmano = { label = "Magmano (Mano po!)", verb = "Nagmamano", bubble = "🙏", duration = 4,
+		effects = { Social = 15, Fun = 5 }, relationship = 10,
+		doneMessages = { "\"Kaawaan ka ng Diyos, apo.\"" } },
+}
+
+--------------------------------------------------------------------------
+-- STATIONS — anything you can interact with. A model's StationId attribute
+-- points here. One action = starts immediately; several = opens a menu.
+--------------------------------------------------------------------------
+Config.Stations = {
+	-- Furniture
+	Banig = { title = "Banig", prompt = "Humiga", actions = { "Matulog", "Idlip" } },
+	Kama = { title = "Kamang Kawayan", prompt = "Humiga", actions = { "MatulogKama", "Idlip" } },
+	Kalan = { title = "Kalan", prompt = "Magluto",
+		actions = { "LutoSinangag", "LutoAdobo", "LutoPancit", "LutoSinigang" } },
+	Hapag = { title = "Hapag-Kainan", prompt = "Umupo", actions = { "Merienda" } },
+	Paliguan = { title = "Timba at Tabo", prompt = "Maligo", actions = { "Maligo" } },
+	Inidoro = { title = "Inidoro", prompt = "Gamitin", actions = { "MagCR" } },
+	TV = { title = "TV", prompt = "Manood", actions = { "Teleserye", "Balita" } },
+	Videoke = { title = "Videoke", prompt = "Kumanta", actions = { "Kumanta" } },
+	Duyan = { title = "Duyan", prompt = "Magduyan", actions = { "Magduyan" } },
+	Bentilador = { title = "Bentilador", prompt = "Gamitin", actions = { "Magpahangin" } },
+	Altar = { title = "Munting Altar", prompt = "Magdasal", actions = { "Magdasal" } },
+	Halaman = { title = "Sampaguita", prompt = "Diligan", actions = { "Diligan" } },
+	Aparador = { title = "Aparador", prompt = "Magbihis", actions = { "Magbihis" } },
+	Parol = { title = "Parol", actions = {} },
+
+	-- Public places
+	SariSari = { title = "Sari-Sari Store ni Aling Nena", prompt = "Bumili",
+		actions = { "BiliPandesal", "BiliTuron", "BiliBalut", "BiliKakanin", "BiliPalamig" } },
+	Karinderya = { title = "Karinderya", prompt = "Kumain", actions = { "Tapsilog", "Lugaw", "HaloHalo" } },
+	Basketball = { title = "Basketball Court", prompt = "Maglaro", actions = { "Basketball" } },
+	Jeepney = { title = "Jeepney", prompt = "Mamasada", actions = { "DriveJeep" } },
+	Palengke = { title = "Puwesto sa Palengke", prompt = "Magtinda", actions = { "Magtinda" } },
+	Bangka = { title = "Bangka", prompt = "Mangisda", actions = { "Mangisda" } },
+	Simbahan = { title = "Simbahan", prompt = "Magsimba", actions = { "Magsimba" } },
+	Poso = { title = "Poso", prompt = "Maghilamos", actions = { "Maghilamos" } },
+
+	-- NPCs
+	NPC_Kapitbahay = { title = "Kapitbahay", prompt = "Kausapin", actions = { "Kwentuhan", "Chismis" } },
+	NPC_Lola = { title = "Lola", prompt = "Kausapin", actions = { "Magmano", "Kwentuhan" } },
+}
+
+--------------------------------------------------------------------------
+-- FURNITURE CATALOG (Build mode). `id` is both the Models builder and StationId.
+--------------------------------------------------------------------------
+Config.Furniture = {
+	{ id = "Banig", name = "Banig", icon = "🧺", price = 150, category = "Tulugan",
+		desc = "Hinabing banig para sa mahimbing na tulog." },
+	{ id = "Kama", name = "Kamang Kawayan", icon = "🛏️", price = 650, category = "Tulugan",
+		desc = "Mas masarap matulog, may dagdag na saya." },
+	{ id = "Kalan", name = "Kalan", icon = "🔥", price = 400, category = "Kusina",
+		desc = "Magluto ng adobo, sinigang, at iba pa." },
+	{ id = "Hapag", name = "Hapag-Kainan", icon = "🍽️", price = 350, category = "Kusina",
+		desc = "Sabay-sabay kumain ang pamilya." },
+	{ id = "Paliguan", name = "Timba at Tabo", icon = "🪣", price = 120, category = "Banyo",
+		desc = "Ang tunay na Pinoy shower." },
+	{ id = "Inidoro", name = "Inidoro", icon = "🚽", price = 300, category = "Banyo",
+		desc = "Para hindi ka na tumakbo sa kapitbahay." },
+	{ id = "TV", name = "TV (de-kahon)", icon = "📺", price = 900, category = "Libangan",
+		desc = "Teleserye gabi-gabi." },
+	{ id = "Videoke", name = "Videoke", icon = "🎤", price = 1500, category = "Libangan",
+		desc = "Birit hanggang madaling-araw." },
+	{ id = "Duyan", name = "Duyan", icon = "🌴", price = 250, category = "Libangan",
+		desc = "Pahinga sa ilalim ng hangin." },
+	{ id = "Bentilador", name = "Bentilador", icon = "🌀", price = 280, category = "Gamit",
+		desc = "Panlaban sa init ng tag-araw." },
+	{ id = "Aparador", name = "Aparador", icon = "🚪", price = 450, category = "Gamit",
+		desc = "Lalagyan ng damit, may salamin pa." },
+	{ id = "Altar", name = "Munting Altar", icon = "🕯️", price = 200, category = "Dekorasyon",
+		desc = "Tahimik na sulok para magdasal." },
+	{ id = "Halaman", name = "Paso ng Sampaguita", icon = "🌼", price = 80, category = "Dekorasyon",
+		desc = "Ang pambansang bulaklak." },
+	{ id = "Parol", name = "Parol", icon = "⭐", price = 120, category = "Dekorasyon",
+		desc = "Ilaw ng Paskong Pinoy. Umiilaw sa gabi." },
+}
+
+Config.FurnitureById = {}
+for _, item in Config.Furniture do
+	Config.FurnitureById[item.id] = item
+end
+
+-- Starting furniture for a brand-new player, relative to their lot origin.
+-- The bahay kubo floor is at y = 4; the yard is y = 0. r = rotation in degrees.
+Config.StarterFurniture = {
+	{ id = "Banig", x = -10, y = 4, z = -15.5, r = 0 },
+	{ id = "Kalan", x = 9, y = 4, z = -18, r = 0 },
+	{ id = "Paliguan", x = 11, y = 4, z = -1, r = 180 },
+	{ id = "Inidoro", x = 13, y = 4, z = -9, r = 270 },
+	{ id = "Halaman", x = -9, y = 0, z = 12, r = 0 },
+}
+
+--------------------------------------------------------------------------
+-- NPCs (mga kapitbahay)
+--------------------------------------------------------------------------
+Config.NPCs = {
+	{ id = "AlingNena", name = "Aling Nena", station = "NPC_Kapitbahay", home = Vector3.new(-30, 0.3, -24),
+		skin = C(198, 140, 104), shirt = C(232, 93, 117), pants = C(70, 60, 100), accessory = "Apron", walkSpeed = 7,
+		lines = { "Uy, kumain ka na ba?", "May bagong dating na pandesal!", "Pautang? Lista ko na lang ha." } },
+	{ id = "MangTonyo", name = "Mang Tonyo", station = "NPC_Kapitbahay", home = Vector3.new(12, 0.3, 14),
+		skin = C(165, 110, 75), shirt = C(240, 240, 230), pants = C(60, 75, 110), accessory = "Salakot", walkSpeed = 8,
+		lines = { "Ang init ngayon, 'no?", "Laro tayo mamaya sa court!", "Noong kabataan ko..." } },
+	{ id = "LolaRemedios", name = "Lola Remedios", station = "NPC_Lola", home = Vector3.new(-10, 0.3, 20),
+		skin = C(205, 155, 120), shirt = C(130, 160, 210), pants = C(90, 80, 120), accessory = "Bun", walkSpeed = 5,
+		lines = { "Apo, nagsimba ka na ba?", "Mag-ingat ka sa daan.", "Kumain ka nang marami, ang payat mo!" } },
+	{ id = "KuyaJun", name = "Kuya Jun", station = "NPC_Kapitbahay", home = Vector3.new(100, 0.2, 16),
+		skin = C(150, 100, 68), shirt = C(240, 200, 60), pants = C(50, 50, 60), accessory = "Towel", walkSpeed = 8,
+		lines = { "Bayan! Bayan! Sakay na!", "Barya lang po sa umaga.", "Traffic na naman sa kanto." } },
+}
+
+Config.NPCById = {}
+for _, npc in Config.NPCs do
+	Config.NPCById[npc.id] = npc
+end
+
+return Config
+]]></ProtectedString></Properties></Item>
+<Item class="ModuleScript" referent="RBX2"><Properties><string name="Name">Models</string><ProtectedString name="Source"><![CDATA[--[[
+	Models — procedural builders for every 3D object in Bahay Buhay.
+	No uploaded meshes or decals are needed: everything is made from parts.
+
+	Conventions:
+	  • Each builder returns a Model whose pivot (PrimaryPart "Base") is at floor level, centre.
+	  • Local +Z is the FRONT of the object (where the player stands to use it).
+	  • A part named "UsePoint" marks where the character goes. If it is a Seat,
+	    the character sits on it; otherwise the character stands on it facing its LookVector.
+	  • A part named "PromptPart" (optional) is where the ProximityPrompt is attached.
+	  • Lights tagged "NightLight" are switched on at night by the server.
+
+	Usage: Models.build("Kalan") → Model
+]]
+
+local CollectionService = game:GetService("CollectionService")
+
+local Util = require(script.Parent.Util)
+
+local Models = {}
+local Builders = {}
+
+local C = Color3.fromRGB
+local V = Vector3.new
+local CF = CFrame.new
+local ANG = CFrame.Angles
+local MAT = Enum.Material
+local PI = math.pi
+
+local Palette = {
+	bamboo = C(201, 170, 104),
+	bambooDark = C(150, 118, 64),
+	wood = C(124, 84, 48),
+	woodDark = C(84, 54, 32),
+	nipa = C(168, 134, 78),
+	nipaDark = C(130, 100, 56),
+	sawali = C(214, 186, 128),
+	white = C(242, 242, 238),
+	metal = C(190, 192, 196),
+	chrome = C(228, 230, 235),
+	dark = C(35, 35, 40),
+	leaf = C(64, 145, 58),
+	leafDark = C(44, 110, 44),
+	flagRed = C(206, 17, 38),
+	flagBlue = C(0, 56, 168),
+	flagYellow = C(252, 209, 22),
+}
+Models.Palette = Palette
+
+local BANDERITAS_COLORS = {
+	C(230, 57, 70), C(252, 209, 22), C(0, 120, 215), C(46, 196, 108), C(255, 120, 190), C(255, 150, 40),
+}
+
+--------------------------------------------------------------------------
+-- Helpers
+--------------------------------------------------------------------------
+local function newModel(name: string, stationId: string?): Model
+	local model = Instance.new("Model")
+	model.Name = name
+	local base = Util.part({
+		Name = "Base",
+		Size = V(1, 0.2, 1),
+		CFrame = CF(0, 0, 0),
+		Transparency = 1,
+		CanCollide = false,
+		CanTouch = false,
+		CanQuery = false,
+		Parent = model,
+	})
+	model.PrimaryPart = base
+	if stationId then
+		model:SetAttribute("StationId", stationId)
+	end
+	return model
+end
+
+local function P(model: Instance, props: { [string]: any }): BasePart
+	props.Parent = model
+	return Util.part(props)
+end
+
+-- Vertical cylinder standing on y0.
+local function vcyl(model, x, y0, z, height, diameter, color, material, extra)
+	local props = {
+		Shape = Enum.PartType.Cylinder,
+		Size = V(height, diameter, diameter),
+		CFrame = CF(x, y0 + height / 2, z) * ANG(0, 0, PI / 2),
+		Color = color,
+		Material = material or MAT.Wood,
+	}
+	if extra then
+		for k, v in extra do
+			props[k] = v
+		end
+	end
+	return P(model, props)
+end
+
+local function ball(model, cf, diameter, color, material)
+	return P(model, {
+		Shape = Enum.PartType.Ball,
+		Size = V(diameter, diameter, diameter),
+		CFrame = cf,
+		Color = color,
+		Material = material or MAT.SmoothPlastic,
+	})
+end
+
+local function usePoint(model, cf)
+	return P(model, {
+		Name = "UsePoint",
+		Size = V(1, 0.2, 1),
+		CFrame = cf,
+		Transparency = 1,
+		CanCollide = false,
+		CanTouch = false,
+		CanQuery = false,
+	})
+end
+
+-- A seat that doubles as the UsePoint. Seats face their -Z.
+local function seatPoint(model, cf, size, color, material, visible)
+	return P(model, {
+		ClassName = "Seat",
+		Name = "UsePoint",
+		Size = size or V(2, 0.3, 2),
+		CFrame = cf,
+		Color = color or Palette.wood,
+		Material = material or MAT.Wood,
+		Transparency = if visible == false then 1 else 0,
+	})
+end
+
+local function promptPart(model, cf)
+	return P(model, {
+		Name = "PromptPart",
+		Size = V(1, 1, 1),
+		CFrame = cf,
+		Transparency = 1,
+		CanCollide = false,
+		CanTouch = false,
+		CanQuery = false,
+	})
+end
+
+local function nightLight(part: BasePart, range: number, brightness: number, color: Color3?, spot: boolean?)
+	local light: Light
+	if spot then
+		local s = Instance.new("SpotLight")
+		s.Face = Enum.NormalId.Bottom
+		s.Angle = 110
+		light = s
+	else
+		light = Instance.new("PointLight")
+	end
+	light.Range = range
+	light.Brightness = brightness
+	light.Color = color or C(255, 214, 150)
+	light.Shadows = false
+	light.Enabled = false
+	light.Parent = part
+	CollectionService:AddTag(part, "NightLight")
+	return light
+end
+
+-- Builds a wall along local X with rectangular openings (doors/windows).
+-- frame: CFrame at the wall's bottom-centre. openings: { {c=centreX, w=width, bottom=y, top=y} }
+local function wall(model, frame: CFrame, length, height, thick, openings, color, material)
+	table.sort(openings, function(a, b)
+		return a.c < b.c
+	end)
+	local function piece(x0, x1, y0, y1)
+		if x1 - x0 < 0.05 or y1 - y0 < 0.05 then
+			return
+		end
+		P(model, {
+			Size = V(x1 - x0, y1 - y0, thick),
+			CFrame = frame * CF((x0 + x1) / 2, (y0 + y1) / 2, 0),
+			Color = color,
+			Material = material,
+		})
+	end
+	local cursor = -length / 2
+	for _, o in openings do
+		local x0, x1 = o.c - o.w / 2, o.c + o.w / 2
+		piece(cursor, x0, 0, height)
+		piece(x0, x1, 0, o.bottom)
+		piece(x0, x1, o.top, height)
+		cursor = x1
+	end
+	piece(cursor, length / 2, 0, height)
+end
+
+-- Two sloped thatch panels meeting at a ridge along local X, plus gable triangles.
+local function gableRoof(model, centre: CFrame, width, depth, rise, overhang, color, material, closeGables)
+	local halfRun = depth / 2
+	local angle = math.atan2(rise, halfRun)
+	local span = halfRun + overhang
+	local length = span / math.cos(angle)
+	local cy = rise - (span / 2) * math.tan(angle)
+	for _, side in { 1, -1 } do
+		P(model, {
+			Name = "Bubong",
+			Size = V(width + overhang * 2, 0.8, length),
+			CFrame = centre * CF(0, cy, side * span / 2) * ANG(side * angle, 0, 0),
+			Color = color,
+			Material = material,
+		})
+	end
+	P(model, {
+		Name = "Ridge",
+		Size = V(width + overhang * 2 + 0.4, 0.8, 1.4),
+		CFrame = centre * CF(0, rise + 0.15, 0),
+		Color = Palette.nipaDark,
+		Material = material,
+	})
+	if closeGables then
+		for _, sx in { 1, -1 } do
+			local x = sx * (width / 2 - 0.25)
+			P(model, {
+				ClassName = "WedgePart",
+				Size = V(0.5, rise, halfRun),
+				CFrame = centre * CF(x, rise / 2, halfRun / 2) * ANG(0, PI, 0),
+				Color = Palette.sawali,
+				Material = MAT.Fabric,
+			})
+			P(model, {
+				ClassName = "WedgePart",
+				Size = V(0.5, rise, halfRun),
+				CFrame = centre * CF(x, rise / 2, -halfRun / 2),
+				Color = Palette.sawali,
+				Material = MAT.Fabric,
+			})
+		end
+	end
+end
+
+-- Pennant-shaped triangle pointing down, hanging from `top` (lookAt along the rope).
+local function pennant(parent, top: CFrame, height, halfWidth, color)
+	P(parent, {
+		ClassName = "WedgePart",
+		Size = V(0.06, height, halfWidth),
+		CFrame = top * CF(0, -height / 2, -halfWidth / 2) * ANG(0, 0, PI),
+		Color = color,
+		Material = MAT.Fabric,
+		CanCollide = false,
+		CastShadow = false,
+	})
+	P(parent, {
+		ClassName = "WedgePart",
+		Size = V(0.06, height, halfWidth),
+		CFrame = top * CF(0, -height / 2, halfWidth / 2) * ANG(0, PI, PI),
+		Color = color,
+		Material = MAT.Fabric,
+		CanCollide = false,
+		CastShadow = false,
+	})
+end
+
+local function bench(model, cf: CFrame, length)
+	P(model, { Size = V(length, 0.3, 1.2), CFrame = cf * CF(0, 1.6, 0), Color = Palette.wood, Material = MAT.WoodPlanks })
+	for _, sx in { -1, 1 } do
+		P(model, { Size = V(0.3, 1.45, 1), CFrame = cf * CF(sx * (length / 2 - 0.5), 0.725, 0), Color = Palette.woodDark })
+	end
+end
+
+--------------------------------------------------------------------------
+-- FURNITURE
+--------------------------------------------------------------------------
+function Builders.Banig()
+	local m = newModel("Banig", "Banig")
+	P(m, { Name = "Mat", Size = V(4.2, 0.2, 7), CFrame = CF(0, 0.1, 0), Color = C(214, 186, 120), Material = MAT.Fabric })
+	for i = -1, 1 do
+		P(m, {
+			Size = V(4.22, 0.22, 0.35),
+			CFrame = CF(0, 0.11, i * 2),
+			Color = if i == 0 then C(200, 50, 60) else C(40, 130, 90),
+			Material = MAT.Fabric,
+		})
+	end
+	P(m, { Name = "Unan", Size = V(2.6, 0.6, 1.2), CFrame = CF(0, 0.5, 2.8), Color = Palette.white, Material = MAT.Fabric })
+	usePoint(m, CF(0, 0.2, 0)) -- lying down: head goes toward +Z (the pillow)
+	return m
+end
+
+function Builders.Kama()
+	local m = newModel("Kama", "Kama")
+	for _, x in { -2.3, 2.3 } do
+		for _, z in { -3.8, 3.8 } do
+			vcyl(m, x, 0, z, 1.6, 0.45, Palette.bambooDark)
+		end
+	end
+	vcyl(m, -2.3, 1.6, 3.8, 1.6, 0.45, Palette.bambooDark)
+	vcyl(m, 2.3, 1.6, 3.8, 1.6, 0.45, Palette.bambooDark)
+	P(m, { Size = V(5, 0.3, 8), CFrame = CF(0, 1.6, 0), Color = Palette.bamboo, Material = MAT.WoodPlanks })
+	P(m, { Size = V(5, 0.25, 0.3), CFrame = CF(0, 3.0, 3.8), Color = Palette.bamboo, Material = MAT.Wood })
+	P(m, { Name = "Kutson", Size = V(4.6, 0.5, 7.4), CFrame = CF(0, 2.0, 0), Color = C(120, 170, 210), Material = MAT.Fabric })
+	P(m, { Name = "Unan", Size = V(3, 0.6, 1.2), CFrame = CF(0, 2.5, 3), Color = Palette.white, Material = MAT.Fabric })
+	P(m, { Name = "Kumot", Size = V(4.7, 0.1, 3.5), CFrame = CF(0, 2.28, -1.8), Color = C(230, 120, 80), Material = MAT.Fabric })
+	usePoint(m, CF(0, 2.25, 0))
+	return m
+end
+
+function Builders.Kalan()
+	local m = newModel("Kalan", "Kalan")
+	P(m, { Name = "Counter", Size = V(5, 3, 2.4), CFrame = CF(0, 1.5, 0), Color = Palette.wood, Material = MAT.WoodPlanks })
+	P(m, { Size = V(5.2, 0.2, 2.6), CFrame = CF(0, 3.1, 0), Color = C(205, 205, 200), Material = MAT.Marble })
+	P(m, { Name = "Stove", Size = V(3, 0.4, 1.6), CFrame = CF(0, 3.4, -0.1), Color = Palette.dark, Material = MAT.Metal })
+	for _, x in { -0.7, 0.7 } do
+		vcyl(m, x, 3.6, -0.1, 0.08, 0.8, C(20, 20, 20), MAT.Metal)
+	end
+	vcyl(m, -0.7, 3.65, -0.1, 0.9, 1.1, C(170, 170, 176), MAT.Metal) -- kaldero
+	vcyl(m, -0.7, 4.55, -0.1, 0.1, 1.15, C(140, 140, 146), MAT.Metal)
+	P(m, { Name = "Kawali", Size = V(1.2, 0.2, 1.2), CFrame = CF(0.7, 3.75, -0.1), Color = C(30, 30, 30), Material = MAT.Metal })
+	P(m, { Size = V(1, 0.1, 0.15), CFrame = CF(1.6, 3.8, -0.1), Color = Palette.woodDark })
+	vcyl(m, 2.1, 3.2, 0.6, 1.2, 0.5, C(210, 60, 40), MAT.SmoothPlastic) -- bote ng toyo/suka
+	usePoint(m, CFrame.lookAt(V(0, 0.2, 2.8), V(0, 0.2, 0)))
+	return m
+end
+
+function Builders.Hapag()
+	local m = newModel("Hapag", "Hapag")
+	P(m, { Name = "Mesa", Size = V(6, 0.3, 3.2), CFrame = CF(0, 2.85, 0), Color = Palette.wood, Material = MAT.WoodPlanks })
+	for _, x in { -2.7, 2.7 } do
+		for _, z in { -1.4, 1.4 } do
+			P(m, { Size = V(0.3, 2.7, 0.3), CFrame = CF(x, 1.35, z), Color = Palette.woodDark })
+		end
+	end
+	-- bench players sit on (faces the table, -Z)
+	seatPoint(m, CF(0, 1.6, 2.4), V(5, 0.3, 1.2), Palette.wood, MAT.WoodPlanks)
+	for _, x in { -2.2, 2.2 } do
+		P(m, { Size = V(0.3, 1.45, 1), CFrame = CF(x, 0.725, 2.4), Color = Palette.woodDark })
+	end
+	bench(m, CF(0, 0, -2.4), 5)
+	-- food
+	vcyl(m, 0, 3.0, 0, 0.4, 1.1, Palette.white, MAT.SmoothPlastic)
+	ball(m, CF(0, 3.4, 0), 0.9, Palette.white)
+	vcyl(m, 1.7, 3.0, 0.3, 0.12, 1.3, Palette.white, MAT.SmoothPlastic)
+	P(m, { Size = V(0.8, 0.2, 0.6), CFrame = CF(1.7, 3.2, 0.3), Color = C(110, 60, 30) })
+	vcyl(m, -1.8, 3.0, -0.4, 1, 0.6, C(200, 230, 255), MAT.Glass, { Transparency = 0.35 })
+	return m
+end
+
+function Builders.Paliguan()
+	local m = newModel("Paliguan", "Paliguan")
+	P(m, { Size = V(5, 0.2, 5), CFrame = CF(0, 0.1, 0), Color = C(120, 180, 200), Material = MAT.Slate })
+	P(m, { Size = V(5, 6, 0.3), CFrame = CF(0, 3.2, -2.35), Color = C(225, 225, 215), Material = MAT.Concrete })
+	P(m, { Size = V(0.3, 6, 5), CFrame = CF(2.35, 3.2, 0), Color = C(225, 225, 215), Material = MAT.Concrete })
+	vcyl(m, -1, 0.2, -1.2, 1.6, 1.6, C(40, 110, 220), MAT.SmoothPlastic) -- timba
+	vcyl(m, -1, 1.72, -1.2, 0.05, 1.4, C(120, 190, 240), MAT.Glass, { Transparency = 0.3 })
+	vcyl(m, 0.7, 0.2, -1.4, 0.7, 0.7, C(240, 90, 140), MAT.SmoothPlastic) -- tabo
+	P(m, { Size = V(0.2, 0.2, 0.6), CFrame = CF(0.7, 0.7, -0.85), Color = C(240, 90, 140) })
+	vcyl(m, 1.6, 0.2, 1.4, 2.2, 1.8, C(60, 130, 200), MAT.SmoothPlastic) -- drum ng tubig
+	usePoint(m, CF(0, 0.2, 0.8))
+	return m
+end
+
+function Builders.Inidoro()
+	local m = newModel("Inidoro", "Inidoro")
+	vcyl(m, 0, 0, 0, 1.2, 1.4, Palette.white, MAT.SmoothPlastic)
+	seatPoint(m, CF(0, 1.35, 0.1) * ANG(0, PI, 0), V(1.6, 0.25, 1.8), Palette.white, MAT.SmoothPlastic)
+	P(m, { Name = "Tangke", Size = V(1.8, 1.8, 0.8), CFrame = CF(0, 2, -1.0), Color = Palette.white, Material = MAT.SmoothPlastic })
+	P(m, { Size = V(0.4, 0.12, 0.12), CFrame = CF(0.6, 2.6, -0.55), Color = Palette.metal, Material = MAT.Metal })
+	P(m, { Size = V(0.6, 0.6, 0.6), CFrame = CF(-1.4, 0.3, 0.4), Color = C(40, 110, 220) }) -- tabo sa CR
+	return m
+end
+
+function Builders.TV()
+	local m = newModel("TV", "TV")
+	P(m, { Name = "Cabinet", Size = V(4, 2.4, 2), CFrame = CF(0, 1.2, 0), Color = Palette.wood, Material = MAT.WoodPlanks })
+	P(m, { Name = "Kahon", Size = V(3, 2.4, 2.2), CFrame = CF(0, 3.6, 0), Color = C(70, 70, 75), Material = MAT.SmoothPlastic })
+	P(m, { Name = "Screen", Size = V(2.3, 1.8, 0.1), CFrame = CF(-0.2, 3.65, 1.12), Color = C(60, 120, 150), Material = MAT.Neon })
+	for i, x in { 1.15, 1.15 } do
+		vcyl(m, x, 3.9 - i * 0.55, 1.12, 0.12, 0.3, C(30, 30, 30), MAT.SmoothPlastic)
+	end
+	P(m, { Size = V(0.08, 1.8, 0.08), CFrame = CF(-0.4, 5.5, 0) * ANG(0, 0, 0.4), Color = Palette.metal, Material = MAT.Metal })
+	P(m, { Size = V(0.08, 1.8, 0.08), CFrame = CF(0.4, 5.5, 0) * ANG(0, 0, -0.4), Color = Palette.metal, Material = MAT.Metal })
+	-- bangkô (stool) to sit on
+	seatPoint(m, CF(0, 1.4, 6), V(1.8, 0.3, 1.8), Palette.wood, MAT.Wood)
+	for _, x in { -0.7, 0.7 } do
+		for _, z in { 5.3, 6.7 } do
+			P(m, { Size = V(0.25, 1.25, 0.25), CFrame = CF(x, 0.625, z), Color = Palette.woodDark })
+		end
+	end
+	promptPart(m, CF(0, 2, 2))
+	return m
+end
+
+function Builders.Videoke()
+	local m = newModel("Videoke", "Videoke")
+	P(m, { Name = "Cabinet", Size = V(3, 3.2, 1.8), CFrame = CF(0, 1.6, 0), Color = C(30, 30, 35) })
+	P(m, { Name = "Monitor", Size = V(3, 2.2, 1.6), CFrame = CF(0, 4.3, 0), Color = C(40, 40, 45) })
+	P(m, { Name = "Screen", Size = V(2.6, 1.8, 0.1), CFrame = CF(0, 4.3, 0.81), Color = C(150, 80, 220), Material = MAT.Neon })
+	P(m, { Size = V(2.6, 0.15, 0.05), CFrame = CF(0, 2.9, 0.92), Color = C(255, 80, 160), Material = MAT.Neon })
+	P(m, { Size = V(2.6, 0.15, 0.05), CFrame = CF(0, 2.6, 0.92), Color = C(80, 200, 255), Material = MAT.Neon })
+	for _, x in { -2.4, 2.4 } do
+		P(m, { Name = "Speaker", Size = V(1.4, 3.4, 1.4), CFrame = CF(x, 1.7, 0), Color = C(25, 25, 25) })
+		for _, y in { 1.0, 2.5 } do
+			P(m, {
+				Shape = Enum.PartType.Cylinder,
+				Size = V(0.1, 1, 1),
+				CFrame = CF(x, y, 0.71) * ANG(0, PI / 2, 0),
+				Color = C(70, 70, 75),
+				Material = MAT.Metal,
+			})
+		end
+	end
+	vcyl(m, 0, 0, 3, 4.2, 0.15, Palette.metal, MAT.Metal) -- mic stand
+	ball(m, CF(0, 4.35, 2.9), 0.45, C(40, 40, 40), MAT.Metal)
+	usePoint(m, CFrame.lookAt(V(0, 0.2, 3.8), V(0, 0.2, 0)))
+	return m
+end
+
+function Builders.Duyan()
+	local m = newModel("Duyan", "Duyan")
+	vcyl(m, 0, 0, -5.2, 6, 0.7, Palette.bambooDark)
+	vcyl(m, 0, 0, 5.2, 6, 0.7, Palette.bambooDark)
+	local colors = { C(230, 80, 70), C(250, 200, 60), C(60, 160, 220) }
+	P(m, { Size = V(2.6, 0.15, 3.2), CFrame = CF(0, 2.0, 0), Color = colors[1], Material = MAT.Fabric })
+	local run, rise = 3.1, 2.3
+	local len = math.sqrt(run * run + rise * rise)
+	local angle = math.atan2(rise, run)
+	P(m, { Size = V(2.4, 0.15, len), CFrame = CF(0, 2.0 + rise / 2, 1.6 + run / 2) * ANG(-angle, 0, 0), Color = colors[2], Material = MAT.Fabric })
+	P(m, { Size = V(2.4, 0.15, len), CFrame = CF(0, 2.0 + rise / 2, -1.6 - run / 2) * ANG(angle, 0, 0), Color = colors[3], Material = MAT.Fabric })
+	usePoint(m, CF(0, 2.1, 0))
+	return m
+end
+
+function Builders.Bentilador()
+	local m = newModel("Bentilador", "Bentilador")
+	vcyl(m, 0, 0, 0, 0.3, 1.6, C(60, 60, 70), MAT.SmoothPlastic)
+	vcyl(m, 0, 0.3, 0, 3.2, 0.25, Palette.metal, MAT.Metal)
+	P(m, { Size = V(0.8, 0.8, 1.2), CFrame = CF(0, 3.8, 0), Color = C(60, 60, 70) })
+	P(m, {
+		Name = "Cage",
+		Shape = Enum.PartType.Cylinder,
+		Size = V(0.5, 2.6, 2.6),
+		CFrame = CF(0, 3.8, 0.9) * ANG(0, PI / 2, 0),
+		Color = C(80, 140, 220),
+		Transparency = 0.65,
+		Material = MAT.SmoothPlastic,
+	})
+	for i = 0, 2 do
+		P(m, {
+			Size = V(0.12, 1.1, 0.05),
+			CFrame = CF(0, 3.8, 0.9) * ANG(0, 0, i * 2 * PI / 3) * CF(0, 0.55, 0),
+			Color = C(60, 120, 210),
+		})
+	end
+	usePoint(m, CFrame.lookAt(V(0, 0.2, 4), V(0, 0.2, 0)))
+	return m
+end
+
+function Builders.Altar()
+	local m = newModel("Altar", "Altar")
+	P(m, { Size = V(4, 2.6, 1.6), CFrame = CF(0, 1.3, 0), Color = Palette.woodDark, Material = MAT.WoodPlanks })
+	P(m, { Size = V(4.1, 0.1, 1.7), CFrame = CF(0, 2.65, 0), Color = Palette.white, Material = MAT.Fabric })
+	P(m, { Size = V(4.1, 1.2, 0.08), CFrame = CF(0, 2.1, 0.85), Color = Palette.white, Material = MAT.Fabric })
+	P(m, { Size = V(0.25, 1.8, 0.25), CFrame = CF(0, 3.6, -0.4), Color = C(205, 170, 80), Material = MAT.Metal })
+	P(m, { Size = V(1, 0.25, 0.25), CFrame = CF(0, 4.0, -0.4), Color = C(205, 170, 80), Material = MAT.Metal })
+	for _, x in { -1.4, 1.4 } do
+		vcyl(m, x, 2.7, 0.2, 0.8, 0.25, Palette.white, MAT.SmoothPlastic)
+		local flame = ball(m, CF(x, 3.65, 0.2), 0.25, C(255, 180, 60), MAT.Neon)
+		local light = Instance.new("PointLight")
+		light.Range = 8
+		light.Brightness = 1
+		light.Color = C(255, 190, 110)
+		light.Parent = flame
+	end
+	for _, x in { -0.8, 0.8 } do
+		ball(m, CF(x, 2.95, 0.3), 0.4, C(255, 255, 255))
+	end
+	usePoint(m, CFrame.lookAt(V(0, 0.2, 3), V(0, 0.2, 0)))
+	return m
+end
+
+function Builders.Halaman()
+	local m = newModel("Halaman", "Halaman")
+	vcyl(m, 0, 0, 0, 1.4, 1.6, C(176, 92, 52), MAT.Slate)
+	vcyl(m, 0, 1.38, 0, 0.05, 1.4, C(80, 55, 35), MAT.Ground)
+	local rng = Random.new(7)
+	for _ = 1, 5 do
+		ball(m, CF(rng:NextNumber(-0.5, 0.5), rng:NextNumber(1.9, 2.6), rng:NextNumber(-0.5, 0.5)), 1.1, Palette.leaf, MAT.Grass)
+	end
+	for _ = 1, 9 do
+		ball(m, CF(rng:NextNumber(-0.8, 0.8), rng:NextNumber(2.0, 3.0), rng:NextNumber(-0.8, 0.8)), 0.32, C(255, 255, 250))
+	end
+	usePoint(m, CFrame.lookAt(V(0, 0.2, 2.6), V(0, 0.2, 0)))
+	return m
+end
+
+function Builders.Parol()
+	local m = newModel("Parol", "Parol")
+	vcyl(m, 0, 0, 0, 7.2, 0.3, Palette.bambooDark)
+	P(m, { Size = V(0.2, 0.2, 2), CFrame = CF(0, 7.1, 0.9), Color = Palette.bambooDark })
+	P(m, { Size = V(0.05, 0.7, 0.05), CFrame = CF(0, 6.7, 1.7), Color = C(30, 30, 30) })
+	local centre = CF(0, 5.4, 1.7)
+	local core = ball(m, centre, 1, C(255, 220, 100), MAT.Neon)
+	for i = 0, 4 do
+		P(m, {
+			Size = V(0.55, 1.7, 0.3),
+			CFrame = centre * ANG(0, 0, i * 2 * PI / 5) * CF(0, 0.95, 0),
+			Color = if i % 2 == 0 then C(230, 40, 50) else C(255, 200, 40),
+			Material = MAT.Neon,
+		})
+	end
+	for _, sx in { -1, 1 } do
+		P(m, {
+			Size = V(0.15, 2.2, 0.05),
+			CFrame = centre * CF(sx * 0.35, -2.0, 0) * ANG(0, 0, sx * 0.15),
+			Color = C(230, 40, 50),
+			Material = MAT.Neon,
+			CanCollide = false,
+		})
+	end
+	nightLight(core, 16, 2, C(255, 200, 120))
+	return m
+end
+
+function Builders.Aparador()
+	local m = newModel("Aparador", "Aparador")
+	P(m, { Size = V(4, 6.5, 2), CFrame = CF(0, 3.25, 0), Color = Palette.wood, Material = MAT.WoodPlanks })
+	P(m, { Size = V(4.3, 0.3, 2.2), CFrame = CF(0, 6.65, 0), Color = Palette.woodDark })
+	P(m, { Size = V(0.08, 6, 0.05), CFrame = CF(0, 3.3, 1.02), Color = Palette.woodDark })
+	for _, x in { -0.3, 0.3 } do
+		P(m, { Size = V(0.12, 0.5, 0.12), CFrame = CF(x, 3.4, 1.08), Color = C(205, 170, 80), Material = MAT.Metal })
+	end
+	P(m, { Name = "Salamin", Size = V(1.4, 4, 0.05), CFrame = CF(-1, 3.6, 1.03), Color = C(200, 220, 230), Material = MAT.Glass, Reflectance = 0.4 })
+	usePoint(m, CFrame.lookAt(V(0, 0.2, 3), V(0, 0.2, 0)))
+	return m
+end
+
+--------------------------------------------------------------------------
+-- PUBLIC PLACES
+--------------------------------------------------------------------------
+function Builders.SariSari()
+	local m = newModel("SariSari", "SariSari")
+	P(m, { Name = "Body", Size = V(14, 9, 10), CFrame = CF(0, 4.5, 0), Color = C(232, 222, 190), Material = MAT.Concrete })
+	P(m, { Size = V(14.1, 3, 10.1), CFrame = CF(0, 1.5, 0), Color = C(90, 150, 120), Material = MAT.Concrete })
+	P(m, { Name = "Loob", Size = V(9, 3.6, 0.2), CFrame = CF(0, 4.5, 5.05), Color = C(45, 32, 25) })
+	for i = 0, 11 do
+		P(m, { Size = V(0.12, 3.6, 0.12), CFrame = CF(-4.4 + i * 0.8, 4.5, 5.3), Color = C(60, 95, 60), Material = MAT.Metal })
+	end
+	P(m, { Size = V(9.2, 0.12, 0.12), CFrame = CF(0, 6.3, 5.3), Color = C(60, 95, 60), Material = MAT.Metal })
+	P(m, { Name = "Counter", Size = V(10, 0.3, 1.4), CFrame = CF(0, 2.6, 5.7), Color = Palette.wood, Material = MAT.WoodPlanks })
+	-- hanging "tingi" sachets
+	local rng = Random.new(3)
+	for i = 0, 10 do
+		P(m, {
+			Size = V(0.5, 1.5, 0.05),
+			CFrame = CF(-4 + i * 0.8, 5.6, 5.45),
+			Color = Color3.fromHSV(rng:NextNumber(), 0.75, 0.95),
+			Material = MAT.SmoothPlastic,
+			CanCollide = false,
+		})
+	end
+	-- glass candy jars on the counter
+	for i, x in { -3, -1.8, 1.8, 3 } do
+		vcyl(m, x, 2.75, 5.7, 0.9, 0.8, C(220, 240, 255), MAT.Glass, { Transparency = 0.4 })
+		vcyl(m, x, 2.8, 5.7, 0.5, 0.65, Color3.fromHSV(i / 5, 0.7, 0.95), MAT.SmoothPlastic)
+	end
+	-- corrugated GI roof (yero)
+	P(m, { Name = "Yero", Size = V(15, 0.3, 13), CFrame = CF(0, 9.4, 1) * ANG(0.08, 0, 0), Color = C(150, 140, 130), Material = MAT.CorrodedMetal })
+	local sign = P(m, { Name = "Karatula", Size = V(12, 2, 0.3), CFrame = CF(0, 7.6, 5.3), Color = C(252, 220, 70) })
+	Util.surfaceText(sign, Enum.NormalId.Back, "SARI-SARI STORE NI ALING NENA", C(160, 20, 30))
+	bench(m, CF(-4.5, 0, 8.2), 4.5)
+	usePoint(m, CFrame.lookAt(V(0, 0, 7.2), V(0, 0, 0)))
+	promptPart(m, CF(0, 3, 6.5))
+	return m
+end
+
+function Builders.Monobloc(color: Color3?)
+	local m = newModel("Monobloc")
+	local col = color or Palette.white
+	P(m, { ClassName = "Seat", Name = "Upuan", Size = V(1.8, 0.25, 1.8), CFrame = CF(0, 1.6, 0), Color = col, Material = MAT.SmoothPlastic })
+	P(m, { Size = V(1.8, 2, 0.25), CFrame = CF(0, 2.7, 0.85) * ANG(-0.12, 0, 0), Color = col, Material = MAT.SmoothPlastic })
+	for _, x in { -0.75, 0.75 } do
+		for _, z in { -0.75, 0.75 } do
+			P(m, { Size = V(0.22, 1.5, 0.22), CFrame = CF(x, 0.75, z), Color = col, Material = MAT.SmoothPlastic })
+		end
+	end
+	return m
+end
+
+function Builders.Karinderya()
+	local m = newModel("Karinderya", "Karinderya")
+	P(m, { Name = "Counter", Size = V(10, 3, 2.5), CFrame = CF(0, 1.5, 0), Color = C(240, 240, 235), Material = MAT.SmoothPlastic })
+	P(m, { Size = V(10.1, 0.6, 2.6), CFrame = CF(0, 0.3, 0), Color = Palette.flagBlue })
+	P(m, { Name = "Salamin", Size = V(9.5, 1.6, 2.2), CFrame = CF(0, 3.8, 0), Color = C(200, 230, 240), Material = MAT.Glass, Transparency = 0.6 })
+	local ulam = { C(110, 60, 30), C(200, 80, 40), C(80, 140, 60), C(220, 200, 150), C(50, 25, 25) }
+	for i = 1, 5 do
+		local x = -4.4 + (i - 1) * 2.2
+		vcyl(m, x, 3.0, 0, 0.9, 1.5, C(175, 175, 180), MAT.Metal)
+		vcyl(m, x, 3.88, 0, 0.05, 1.3, ulam[i], MAT.SmoothPlastic)
+	end
+	for _, x in { -6, 6 } do
+		for _, z in { -3.5, 3.5 } do
+			vcyl(m, x, 0, z, 8, 0.35, Palette.metal, MAT.Metal)
+		end
+	end
+	P(m, { Name = "Trapal", Size = V(13, 0.2, 8.5), CFrame = CF(0, 8.1, 0), Color = C(40, 110, 200), Material = MAT.Fabric })
+	P(m, { Size = V(13.05, 0.22, 1.2), CFrame = CF(0, 8.1, 0), Color = C(250, 250, 250), Material = MAT.Fabric })
+	local sign = P(m, { Name = "Karatula", Size = V(8, 1.6, 0.2), CFrame = CF(0, 7, 4.2), Color = C(210, 40, 45) })
+	Util.surfaceText(sign, Enum.NormalId.Back, "KARINDERYA · TURO-TURO", C(255, 240, 200))
+	-- dining area with monobloc chairs
+	for _, x in { -4, 4 } do
+		P(m, { Size = V(3, 0.2, 3), CFrame = CF(x, 2.6, 8.5), Color = Palette.white, Material = MAT.SmoothPlastic })
+		vcyl(m, x, 0, 8.5, 2.5, 0.3, Palette.white, MAT.SmoothPlastic)
+		for _, dz in { -2.2, 2.2 } do
+			local chair = Builders.Monobloc(if x < 0 then C(240, 70, 70) else Palette.white)
+			chair:PivotTo(CF(x, 0, 8.5 + dz) * (if dz < 0 then ANG(0, PI, 0) else CFrame.identity))
+			chair.Parent = m
+		end
+	end
+	usePoint(m, CFrame.lookAt(V(0, 0, 3.6), V(0, 0, 0)))
+	promptPart(m, CF(0, 3, 2))
+	return m
+end
+
+function Builders.BasketballRing()
+	local m = newModel("BasketballRing", "Basketball")
+	P(m, { Size = V(0.8, 11, 0.8), CFrame = CF(0, 5.5, -2), Color = C(40, 60, 140), Material = MAT.Metal })
+	P(m, { Size = V(0.6, 0.6, 2.4), CFrame = CF(0, 10.5, -0.8), Color = C(40, 60, 140), Material = MAT.Metal })
+	P(m, { Name = "Board", Size = V(6, 3.6, 0.2), CFrame = CF(0, 11.5, 0.4), Color = Palette.white })
+	for _, spec in {
+		{ V(2, 0.12, 0.05), CF(0, 12.2, 0.52) },
+		{ V(2, 0.12, 0.05), CF(0, 10.9, 0.52) },
+		{ V(0.12, 1.4, 0.05), CF(-1, 11.55, 0.52) },
+		{ V(0.12, 1.4, 0.05), CF(1, 11.55, 0.52) },
+	} do
+		P(m, { Size = spec[1], CFrame = spec[2], Color = Palette.flagRed })
+	end
+	local centre = V(0, 10.4, 1.4)
+	for i = 0, 11 do
+		local a = i / 12 * 2 * PI
+		P(m, {
+			Size = V(0.12, 0.12, 0.55),
+			CFrame = CF(centre + V(math.cos(a) * 0.9, 0, math.sin(a) * 0.9)) * ANG(0, -a, 0),
+			Color = C(240, 110, 30),
+			Material = MAT.Metal,
+			CanCollide = false,
+		})
+	end
+	vcyl(m, 0, 9.3, 1.4, 1.1, 1.6, Palette.white, MAT.Fabric, { Transparency = 0.6, CanCollide = false })
+	usePoint(m, CFrame.lookAt(V(0, 0, 9), V(0, 0, 0)))
+	promptPart(m, CF(0, 3, 4))
+	return m
+end
+
+function Builders.Jeepney(routeText: string?)
+	local m = newModel("Jeepney", "Jeepney")
+	local W = 6.4
+	local silver = Palette.chrome
+	P(m, { Name = "Chassis", Size = V(W - 0.6, 0.8, 19), CFrame = CF(0, 1.6, 0), Color = C(50, 50, 55), Material = MAT.Metal })
+	-- passenger cabin (rear)
+	P(m, { Name = "Body", Size = V(W, 4.2, 11.5), CFrame = CF(0, 4.1, 2.75), Color = silver, Material = MAT.Metal, Reflectance = 0.15 })
+	P(m, { Size = V(W + 0.05, 1.4, 10.5), CFrame = CF(0, 5.2, 2.9), Color = C(30, 35, 40), Material = MAT.Glass })
+	for i, col in { Palette.flagRed, Palette.flagYellow, Palette.flagBlue } do
+		P(m, { Size = V(W + 0.1, 0.35, 11.5), CFrame = CF(0, 2.8 + i * 0.35, 2.75), Color = col })
+	end
+	P(m, { Size = V(3, 0.3, 1.2), CFrame = CF(0, 1.3, 9), Color = Palette.metal, Material = MAT.DiamondPlate })
+	-- driver's cab (hollow so the driver is visible)
+	for _, sx in { -1, 1 } do
+		P(m, { Size = V(0.3, 2, 3.5), CFrame = CF(sx * (W / 2 - 0.15), 3, -4.75), Color = Palette.flagRed })
+		P(m, { Size = V(0.2, 2.2, 3.5), CFrame = CF(sx * (W / 2 - 0.15), 5.1, -4.75), Color = C(160, 200, 220), Material = MAT.Glass, Transparency = 0.5 })
+	end
+	P(m, { Size = V(W, 1.6, 0.3), CFrame = CF(0, 2.8, -6.35), Color = Palette.flagRed })
+	P(m, { Name = "Windshield", Size = V(W - 0.4, 2.6, 0.1), CFrame = CF(0, 4.9, -6.4), Color = C(160, 200, 220), Material = MAT.Glass, Transparency = 0.5 })
+	-- hood, grill, lights, ornaments
+	P(m, { Name = "Hood", Size = V(W - 0.8, 1.8, 3), CFrame = CF(0, 2.9, -8), Color = silver, Material = MAT.Metal, Reflectance = 0.2 })
+	P(m, { Size = V(W - 1.4, 1.2, 0.1), CFrame = CF(0, 2.8, -9.55), Color = Palette.metal, Material = MAT.DiamondPlate })
+	for _, sx in { -1, 1 } do
+		P(m, {
+			Shape = Enum.PartType.Cylinder,
+			Size = V(0.15, 0.9, 0.9),
+			CFrame = CF(sx * 2, 3.1, -9.6) * ANG(0, PI / 2, 0),
+			Color = C(255, 250, 220),
+			Material = MAT.Neon,
+		})
+		P(m, { Name = "Kabayo", Size = V(0.3, 1, 0.9), CFrame = CF(sx * 1.4, 4.3, -8.8), Color = silver, Material = MAT.Metal, Reflectance = 0.3 })
+		P(m, { Size = V(0.1, 2.5, 0.1), CFrame = CF(sx * 2.6, 5.2, -9.2), Color = silver, Material = MAT.Metal })
+	end
+	-- roof and route sign
+	P(m, { Name = "Roof", Size = V(W + 0.6, 0.4, 15.2), CFrame = CF(0, 6.4, 1.1), Color = silver, Material = MAT.Metal })
+	local sign = P(m, { Name = "Ruta", Size = V(5, 1.1, 0.3), CFrame = CF(0, 7.15, -6.2), Color = Palette.white })
+	Util.surfaceText(sign, Enum.NormalId.Front, routeText or "BAYAN - PALENGKE", Palette.flagBlue)
+	-- wheels
+	for _, sx in { -1, 1 } do
+		for _, z in { -6.6, 6.2 } do
+			P(m, {
+				Shape = Enum.PartType.Cylinder,
+				Size = V(1, 2.6, 2.6),
+				CFrame = CF(sx * (W / 2 - 0.2), 1.3, z),
+				Color = C(25, 25, 25),
+				Material = MAT.SmoothPlastic,
+			})
+		end
+	end
+	-- driver seat (left-hand drive) and steering wheel
+	seatPoint(m, CF(-1.6, 2.4, -4.6), V(1.8, 0.3, 1.8), C(120, 30, 30), MAT.Fabric)
+	P(m, {
+		Shape = Enum.PartType.Cylinder,
+		Size = V(0.15, 1.3, 1.3),
+		CFrame = CF(-1.6, 3.9, -5.8) * ANG(0, PI / 2, 0),
+		Color = C(30, 30, 30),
+	})
+	promptPart(m, CF(-W / 2 - 1, 3, -4.75))
+	return m
+end
+
+function Builders.Palengke(variant: number?)
+	local m = newModel("Palengke", "Palengke")
+	local rng = Random.new(variant or 1)
+	P(m, { Name = "Mesa", Size = V(8, 2.8, 3.5), CFrame = CF(0, 1.4, 0), Color = Palette.wood, Material = MAT.WoodPlanks })
+	for _, x in { -4.2, 4.2 } do
+		for _, z in { -2, 2 } do
+			vcyl(m, x, 0, z, 8, 0.4, Palette.bambooDark)
+		end
+	end
+	P(m, {
+		Name = "Trapal",
+		Size = V(9.5, 0.25, 5.8),
+		CFrame = CF(0, 8, 0) * ANG(-0.1, 0, 0),
+		Color = Color3.fromHSV(rng:NextNumber(), 0.7, 0.9),
+		Material = MAT.Fabric,
+	})
+	local produce = {
+		{ C(250, 200, 50), 0.7 }, -- mangga
+		{ C(220, 40, 40), 0.55 }, -- kamatis
+		{ C(110, 50, 140), 0.6 }, -- talong
+		{ C(240, 220, 90), 0.5 }, -- saging
+	}
+	for i, x in { -2.6, 0, 2.6 } do
+		vcyl(m, x, 2.8, 0.5, 0.2, 2.3, Palette.bamboo, MAT.Fabric) -- bilao
+		local item = produce[((i + (variant or 1)) % #produce) + 1]
+		for _ = 1, 6 do
+			ball(m, CF(x + rng:NextNumber(-0.6, 0.6), 3.2 + rng:NextNumber(0, 0.25), 0.5 + rng:NextNumber(-0.6, 0.6)), item[2], item[1])
+		end
+	end
+	-- fresh fish on ice
+	P(m, { Size = V(2.4, 0.2, 1), CFrame = CF(0, 2.9, -1.1), Color = C(235, 245, 255), Material = MAT.Ice })
+	for i = 0, 3 do
+		P(m, { Size = V(0.9, 0.25, 0.35), CFrame = CF(-0.8 + i * 0.55, 3.1, -1.1) * ANG(0, 0.3, 0), Color = C(170, 180, 190), Material = MAT.Metal })
+	end
+	P(m, { Name = "Timbangan", Size = V(1, 0.8, 1), CFrame = CF(3.2, 3.2, -1.1), Color = C(200, 40, 40) })
+	usePoint(m, CFrame.lookAt(V(0, 0, -3.3), V(0, 0, 0))) -- vendor stands behind the table
+	return m
+end
+
+function Builders.Bangka()
+	local m = newModel("Bangka", "Bangka")
+	P(m, { Name = "Katawan", Size = V(2.6, 1.4, 9), CFrame = CF(0, 0.5, 0), Color = Palette.white, Material = MAT.Wood })
+	P(m, { Size = V(2.65, 0.4, 9), CFrame = CF(0, 0, 0), Color = Palette.flagBlue })
+	P(m, { ClassName = "WedgePart", Size = V(2.6, 1.4, 3), CFrame = CF(0, 0.5, -6) * ANG(0, 0, PI), Color = Palette.white, Material = MAT.Wood })
+	P(m, { ClassName = "WedgePart", Size = V(2.6, 1.4, 3), CFrame = CF(0, 0.5, 6) * ANG(0, PI, PI), Color = Palette.white, Material = MAT.Wood })
+	P(m, { Size = V(2.7, 0.3, 0.6), CFrame = CF(0, 1.1, -3), Color = Palette.flagRed })
+	-- katig (bamboo outriggers) and crossbars
+	for _, sx in { -1, 1 } do
+		P(m, {
+			Shape = Enum.PartType.Cylinder,
+			Size = V(14, 0.6, 0.6),
+			CFrame = CF(sx * 5.5, 0.1, 0) * ANG(0, PI / 2, 0),
+			Color = Palette.bamboo,
+			Material = MAT.Wood,
+		})
+	end
+	for _, z in { -3, 3 } do
+		P(m, {
+			Shape = Enum.PartType.Cylinder,
+			Size = V(11.5, 0.35, 0.35),
+			CFrame = CF(0, 1.3, z),
+			Color = Palette.bambooDark,
+			Material = MAT.Wood,
+		})
+	end
+	seatPoint(m, CF(0, 1.35, 1.5), V(2.2, 0.3, 1.2), Palette.wood, MAT.WoodPlanks)
+	P(m, { Name = "Pamingwit", Size = V(0.12, 0.12, 6), CFrame = CF(0.9, 2.4, -1.5) * ANG(0.35, 0.2, 0), Color = C(110, 75, 40), CanCollide = false })
+	promptPart(m, CF(0, 2, 0))
+	return m
+end
+
+function Builders.Simbahan()
+	local m = newModel("Simbahan", "Simbahan")
+	local stone = C(196, 168, 126)
+	local stoneLight = C(214, 190, 150)
+	P(m, { Name = "Nave", Size = V(28, 20, 40), CFrame = CF(0, 10, -20), Color = stone, Material = MAT.Sandstone })
+	P(m, { Name = "Fachada", Size = V(32, 26, 3), CFrame = CF(0, 13, 1.5), Color = stoneLight, Material = MAT.Sandstone })
+	-- pediment (triangle on top of the facade)
+	P(m, { ClassName = "WedgePart", Size = V(3, 8, 16), CFrame = CF(-8, 30, 1.5) * ANG(0, PI / 2, 0), Color = stoneLight, Material = MAT.Sandstone })
+	P(m, { ClassName = "WedgePart", Size = V(3, 8, 16), CFrame = CF(8, 30, 1.5) * ANG(0, -PI / 2, 0), Color = stoneLight, Material = MAT.Sandstone })
+	-- buttresses (common on Philippine baroque churches)
+	for _, x in { -15, 15 } do
+		P(m, { ClassName = "WedgePart", Size = V(3, 14, 6), CFrame = CF(x, 7, 6) * ANG(0, PI, 0), Color = stone, Material = MAT.Sandstone })
+	end
+	-- door with arch
+	P(m, { Name = "Pinto", Size = V(7, 11, 0.3), CFrame = CF(0, 6.7, 3.1), Color = C(80, 50, 30), Material = MAT.WoodPlanks })
+	P(m, { Shape = Enum.PartType.Cylinder, Size = V(0.3, 7, 7), CFrame = CF(0, 12.2, 3.1) * ANG(0, PI / 2, 0), Color = C(80, 50, 30), Material = MAT.WoodPlanks })
+	P(m, { Shape = Enum.PartType.Cylinder, Size = V(0.3, 4.5, 4.5), CFrame = CF(0, 20, 3.1) * ANG(0, PI / 2, 0), Color = C(80, 130, 210), Material = MAT.Glass, Transparency = 0.1 })
+	for _, x in { -9, 9 } do
+		P(m, { Size = V(2.4, 5, 0.3), CFrame = CF(x, 16, 3.1), Color = C(80, 130, 210), Material = MAT.Glass })
+	end
+	-- steps
+	P(m, { Size = V(14, 0.6, 3), CFrame = CF(0, 0.3, 4.5), Color = C(170, 165, 155), Material = MAT.Concrete })
+	P(m, { Size = V(12, 0.6, 1.5), CFrame = CF(0, 0.9, 3.8), Color = C(170, 165, 155), Material = MAT.Concrete })
+	-- bell tower (kampanaryo)
+	P(m, { Name = "Kampanaryo", Size = V(9, 34, 9), CFrame = CF(-20.5, 17, -2), Color = stone, Material = MAT.Sandstone })
+	P(m, { Size = V(4, 5, 9.2), CFrame = CF(-20.5, 28, -2), Color = C(40, 35, 30) })
+	P(m, { Size = V(9.2, 5, 4), CFrame = CF(-20.5, 28, -2), Color = C(40, 35, 30) })
+	vcyl(m, -20.5, 26.5, -2, 2, 2, C(180, 150, 60), MAT.Metal)
+	P(m, { Size = V(10, 1, 10), CFrame = CF(-20.5, 34.5, -2), Color = stoneLight, Material = MAT.Sandstone })
+	P(m, { Size = V(6, 3, 6), CFrame = CF(-20.5, 36.5, -2), Color = stoneLight, Material = MAT.Sandstone })
+	for _, spec in { { -20.5, 38 }, { 0, 34 } } do
+		P(m, { Size = V(0.6, 4, 0.6), CFrame = CF(spec[1], spec[2] + 2, if spec[1] == 0 then 1.5 else -2), Color = Palette.white })
+		P(m, { Size = V(2.6, 0.6, 0.6), CFrame = CF(spec[1], spec[2] + 2.8, if spec[1] == 0 then 1.5 else -2), Color = Palette.white })
+	end
+	usePoint(m, CFrame.lookAt(V(0, 0, 8), V(0, 0, 0)))
+	promptPart(m, CF(0, 3, 6))
+	return m
+end
+
+function Builders.Poso()
+	local m = newModel("Poso", "Poso")
+	local green = C(40, 110, 70)
+	P(m, { Size = V(4, 0.4, 4), CFrame = CF(0, 0.2, 0), Color = C(170, 170, 165), Material = MAT.Concrete })
+	vcyl(m, 0, 0.4, -0.8, 3.6, 0.9, green, MAT.Metal)
+	P(m, { Name = "Spout", Size = V(0.4, 0.4, 1.2), CFrame = CF(0, 3.2, -0.1), Color = green, Material = MAT.Metal })
+	P(m, { Name = "Hawakan", Size = V(0.25, 0.25, 3), CFrame = CF(0, 4.3, -1.8) * ANG(0.35, 0, 0), Color = green, Material = MAT.Metal })
+	vcyl(m, 0, 0.4, 0.6, 1.2, 1.6, C(40, 110, 220), MAT.SmoothPlastic) -- timba sa ilalim
+	usePoint(m, CFrame.lookAt(V(0, 0.4, 2.4), V(0, 0.4, 0)))
+	return m
+end
+
+--------------------------------------------------------------------------
+-- DECOR & STRUCTURES
+--------------------------------------------------------------------------
+function Builders.CoconutTree(seed: number?)
+	local m = newModel("Niyog")
+	local rng = Random.new(seed or 1)
+	local height = rng:NextNumber(16, 24)
+	local segments = 8
+	local lean = rng:NextNumber(0.15, 0.35)
+	local cf = CF(0, 0, 0) * ANG(0, rng:NextNumber(0, 2 * PI), 0)
+	for i = 1, segments do
+		local segLen = height / segments
+		local d = 1.5 - (i / segments) * 0.5
+		cf *= ANG(lean / segments, 0, 0)
+		P(m, {
+			Shape = Enum.PartType.Cylinder,
+			Size = V(segLen + 0.3, d, d),
+			CFrame = cf * CF(0, segLen / 2, 0) * ANG(0, 0, PI / 2),
+			Color = if i % 2 == 0 then C(140, 112, 80) else C(125, 98, 70),
+			Material = MAT.Wood,
+		})
+		cf *= CF(0, segLen, 0)
+	end
+	for i = 1, 3 do
+		local a = i / 3 * 2 * PI
+		ball(m, cf * CF(math.cos(a) * 0.7, -0.6, math.sin(a) * 0.7), 1.1, C(90, 120, 40))
+	end
+	for j = 0, 7 do
+		local yaw = j / 8 * 2 * PI + rng:NextNumber(-0.15, 0.15)
+		local up = rng:NextNumber(0.15, 0.4)
+		local frame = cf * ANG(0, yaw, 0) * ANG(up, 0, 0)
+		P(m, { Size = V(1.8, 0.15, 6.2), CFrame = frame * CF(0, 0, -3), Color = Palette.leaf, CanCollide = false })
+		P(m, {
+			Size = V(1.4, 0.15, 5.8),
+			CFrame = frame * CF(0, 0, -6) * ANG(-0.75, 0, 0) * CF(0, 0, -2.8),
+			Color = Palette.leafDark,
+			CanCollide = false,
+		})
+	end
+	return m
+end
+
+function Builders.StreetLamp()
+	local m = newModel("Poste")
+	vcyl(m, 0, 0, 0, 12.5, 0.5, C(40, 70, 50), MAT.Metal)
+	P(m, { Size = V(0.3, 0.3, 3), CFrame = CF(0, 12.2, 1.4), Color = C(40, 70, 50), Material = MAT.Metal })
+	local lamp = P(m, { Name = "Ilaw", Size = V(1.2, 0.5, 1.8), CFrame = CF(0, 11.9, 2.8), Color = C(255, 230, 170), Material = MAT.Neon })
+	nightLight(lamp, 32, 3, C(255, 210, 140), true)
+	P(m, { Name = "Top", Size = V(0.2, 0.2, 0.2), CFrame = CF(0, 12.6, 0), Transparency = 1, CanCollide = false })
+	return m
+end
+
+-- String of fiesta flags between two world points. Returned model is in world space.
+function Builders.Banderitas(a: Vector3, b: Vector3, sag: number?, seed: number?)
+	local m = Instance.new("Model")
+	m.Name = "Banderitas"
+	local rng = Random.new(seed or 1)
+	local dist = (b - a).Magnitude
+	local count = math.max(2, math.floor(dist / 1.7))
+	local sagDepth = sag or 2.5
+	local flat = V(b.X - a.X, 0, b.Z - a.Z)
+	flat = if flat.Magnitude > 0 then flat.Unit else V(1, 0, 0)
+	local points = {}
+	for i = 0, count do
+		local t = i / count
+		points[i] = a:Lerp(b, t) - V(0, 4 * sagDepth * t * (1 - t), 0)
+	end
+	for i = 0, count - 1 do
+		local p0, p1 = points[i], points[i + 1]
+		local mid = (p0 + p1) / 2
+		P(m, {
+			Size = V(0.06, 0.06, (p1 - p0).Magnitude),
+			CFrame = CFrame.lookAt(mid, p1),
+			Color = C(240, 240, 240),
+			CanCollide = false,
+			CastShadow = false,
+		})
+		pennant(m, CFrame.lookAt(mid, mid + flat), 1.3, 0.6, BANDERITAS_COLORS[rng:NextInteger(1, #BANDERITAS_COLORS)])
+	end
+	return m
+end
+
+function Builders.Bench()
+	local m = newModel("Bangko")
+	bench(m, CFrame.identity, 6)
+	P(m, { Size = V(6, 1.2, 0.25), CFrame = CF(0, 2.6, 0.55), Color = Palette.wood, Material = MAT.WoodPlanks })
+	return m
+end
+
+-- Open-sided hut with a nipa roof (used for the videoke area and beach cottage).
+function Builders.Pavilion(width: number?, depth: number?)
+	local m = newModel("Pavilion")
+	local W, D = width or 14, depth or 12
+	P(m, { Size = V(W, 0.4, D), CFrame = CF(0, 0.2, 0), Color = C(185, 175, 160), Material = MAT.Concrete })
+	for _, sx in { -1, 1 } do
+		for _, sz in { -1, 1 } do
+			vcyl(m, sx * (W / 2 - 0.6), 0.4, sz * (D / 2 - 0.6), 8.6, 0.7, Palette.bambooDark)
+		end
+	end
+	gableRoof(m, CF(0, 9, 0), W, D, 4.5, 1.5, Palette.nipa, MAT.Grass, false)
+	return m
+end
+
+function Builders.Shed(text: string?)
+	local m = newModel("Shed")
+	for _, x in { -5, 5 } do
+		vcyl(m, x, 0, -1, 8, 0.5, Palette.metal, MAT.Metal)
+	end
+	P(m, { Size = V(12, 0.3, 5), CFrame = CF(0, 8, 0) * ANG(-0.12, 0, 0), Color = C(200, 60, 50), Material = MAT.CorrodedMetal })
+	bench(m, CF(0, 0, -1), 9)
+	local sign = P(m, { Size = V(8, 1.4, 0.2), CFrame = CF(0, 6.9, 2.3), Color = Palette.flagYellow })
+	Util.surfaceText(sign, Enum.NormalId.Back, text or "SAKAYAN NG JEEP", Palette.flagBlue)
+	return m
+end
+
+function Builders.Building(width: number, depth: number, height: number, color: Color3, text: string?)
+	local m = newModel("Gusali")
+	P(m, { Size = V(width, height, depth), CFrame = CF(0, height / 2, 0), Color = color, Material = MAT.Concrete })
+	P(m, { Size = V(width + 1, 0.6, depth + 1), CFrame = CF(0, height + 0.3, 0), Color = C(120, 110, 100), Material = MAT.Concrete })
+	P(m, { Size = V(4, 7, 0.3), CFrame = CF(0, 3.5, depth / 2 + 0.1), Color = C(70, 50, 35), Material = MAT.WoodPlanks })
+	for _, x in { -width / 3, width / 3 } do
+		P(m, { Size = V(4, 3, 0.2), CFrame = CF(x, height * 0.55, depth / 2 + 0.1), Color = C(150, 190, 220), Material = MAT.Glass })
+	end
+	if text then
+		local sign = P(m, { Size = V(width * 0.7, 2, 0.3), CFrame = CF(0, height - 1.6, depth / 2 + 0.2), Color = Palette.white })
+		Util.surfaceText(sign, Enum.NormalId.Back, text, Palette.flagBlue)
+	end
+	return m
+end
+
+function Builders.Bantayog()
+	local m = newModel("Bantayog")
+	P(m, { Size = V(12, 1, 12), CFrame = CF(0, 0.5, 0), Color = C(190, 185, 175), Material = MAT.Granite })
+	P(m, { Size = V(8, 1, 8), CFrame = CF(0, 1.5, 0), Color = C(200, 195, 185), Material = MAT.Granite })
+	P(m, { Size = V(3, 14, 3), CFrame = CF(0, 9, 0), Color = C(220, 215, 205), Material = MAT.Marble })
+	P(m, { ClassName = "WedgePart", Size = V(3, 2, 1.5), CFrame = CF(0, 17, 0.75) * ANG(0, PI, 0), Color = C(220, 215, 205), Material = MAT.Marble })
+	P(m, { ClassName = "WedgePart", Size = V(3, 2, 1.5), CFrame = CF(0, 17, -0.75), Color = C(220, 215, 205), Material = MAT.Marble })
+	for i = 0, 3 do
+		local a = i * PI / 2
+		local frame = ANG(0, a, 0) * CF(0, 1.2, 5)
+		P(m, { Size = V(6, 0.6, 1.4), CFrame = frame, Color = C(90, 60, 40), Material = MAT.Ground })
+		for k = -2, 2 do
+			ball(m, frame * CF(k * 1.1, 0.5, 0), 0.6, if k % 2 == 0 then C(230, 50, 80) else C(255, 200, 40))
+		end
+	end
+	return m
+end
+
+-- The player's house. Floor top is at y = 4 (local).
+function Builders.BahayKubo()
+	local m = newModel("BahayKubo")
+	local W, D, FH, WH = 30, 24, 4, 9
+	-- haligi (stilts) — the open space underneath is the "silong"
+	for _, x in { -W / 2 + 1, 0, W / 2 - 1 } do
+		for _, z in { -D / 2 + 1, 0, D / 2 - 1 } do
+			vcyl(m, x, 0, z, FH, 1.2, Palette.bambooDark)
+		end
+	end
+	P(m, { Name = "Sahig", Size = V(W, 0.6, D), CFrame = CF(0, FH - 0.3, 0), Color = Palette.bamboo, Material = MAT.WoodPlanks })
+	-- sawali walls with door and windows
+	local wc, wm = Palette.sawali, MAT.Fabric
+	wall(m, CF(0, FH, D / 2 - 0.25), W, WH, 0.5, {
+		{ c = 0, w = 5, bottom = 0, top = 7 },
+		{ c = -9, w = 5, bottom = 3, top = 6.5 },
+		{ c = 9, w = 5, bottom = 3, top = 6.5 },
+	}, wc, wm)
+	wall(m, CF(0, FH, -D / 2 + 0.25), W, WH, 0.5, {
+		{ c = -6, w = 5, bottom = 3, top = 6.5 },
+		{ c = 6, w = 5, bottom = 3, top = 6.5 },
+	}, wc, wm)
+	for _, sx in { 1, -1 } do
+		wall(m, CF(sx * (W / 2 - 0.25), FH, 0) * ANG(0, PI / 2, 0), D - 1, WH, 0.5, {
+			{ c = 0, w = 5, bottom = 3, top = 6.5 },
+		}, wc, wm)
+	end
+	-- corner posts & beams
+	for _, sx in { -1, 1 } do
+		for _, sz in { -1, 1 } do
+			vcyl(m, sx * (W / 2 - 0.3), FH, sz * (D / 2 - 0.3), WH, 0.8, Palette.bambooDark)
+		end
+	end
+	-- propped-open window shutters (tukod)
+	for _, x in { -9, 9 } do
+		P(m, { Size = V(5.4, 0.2, 2.6), CFrame = CF(x, FH + 6.8, D / 2 + 1.0) * ANG(0.45, 0, 0), Color = Palette.nipa, Material = MAT.Grass })
+	end
+	gableRoof(m, CF(0, FH + WH, 0), W, D, 8, 2, Palette.nipa, MAT.Grass, true)
+	-- hagdan (front stairs) with railing
+	for i = 1, 3 do
+		local top = FH - i
+		P(m, { Size = V(5, top, 1.2), CFrame = CF(0, top / 2, D / 2 + (i - 0.5) * 1.2), Color = Palette.bamboo, Material = MAT.WoodPlanks })
+	end
+	for _, sx in { -1, 1 } do
+		vcyl(m, sx * 2.6, 0, D / 2 + 3.6, 3.5, 0.3, Palette.bambooDark)
+		P(m, {
+			Size = V(0.25, 0.25, 4.2),
+			CFrame = CF(sx * 2.6, 4.6, D / 2 + 1.8) * ANG(-0.6, 0, 0),
+			Color = Palette.bambooDark,
+			Material = MAT.Wood,
+		})
+	end
+	return m
+end
+
+-- A whole residential lot: plot, bamboo fence (bakod), sign, bahay kubo, tree.
+function Builders.Lot()
+	local m = newModel("Lot")
+	local half = 28
+	P(m, { Name = "Plot", Size = V(half * 2, 0.2, half * 2), CFrame = CF(0, -0.1, 0), Color = C(112, 168, 76), Material = MAT.Grass })
+	-- fence
+	local function rail(fromV: Vector3, toV: Vector3)
+		local mid = (fromV + toV) / 2
+		for _, y in { 1.1, 2.4 } do
+			P(m, {
+				Size = V(0.25, 0.25, (toV - fromV).Magnitude),
+				CFrame = CFrame.lookAt(mid + V(0, y, 0), toV + V(0, y, 0)),
+				Color = Palette.bamboo,
+				Material = MAT.Wood,
+			})
+		end
+		local steps = math.floor((toV - fromV).Magnitude / 4)
+		for i = 0, steps do
+			local p = fromV:Lerp(toV, i / math.max(steps, 1))
+			vcyl(m, p.X, 0, p.Z, 3, 0.4, Palette.bambooDark)
+		end
+	end
+	rail(V(-half, 0, -half), V(half, 0, -half))
+	rail(V(-half, 0, -half), V(-half, 0, half))
+	rail(V(half, 0, -half), V(half, 0, half))
+	rail(V(-half, 0, half), V(-5, 0, half))
+	rail(V(5, 0, half), V(half, 0, half))
+	-- house
+	local kubo = Builders.BahayKubo()
+	kubo:PivotTo(CF(0, 0, -8))
+	kubo.Parent = m
+	-- path from gate to stairs
+	P(m, { Size = V(4, 0.1, 12), CFrame = CF(0, 0.05, 22), Color = C(150, 120, 85), Material = MAT.Ground })
+	-- sign
+	vcyl(m, 18, 0, 26, 5, 0.35, Palette.woodDark)
+	local board = P(m, { Name = "Sign", Size = V(8, 2.5, 0.3), CFrame = CF(18, 4.6, 26.2) * ANG(0, PI, 0), Color = Palette.wood, Material = MAT.WoodPlanks })
+	Util.surfaceText(board, Enum.NormalId.Front, "Bakanteng Lote", C(255, 240, 200))
+	-- trees
+	local tree = Builders.CoconutTree(math.random(1, 1000))
+	tree:PivotTo(CF(-23, 0, 22))
+	tree.Parent = m
+	local tree2 = Builders.CoconutTree(math.random(1, 1000))
+	tree2:PivotTo(CF(23, 0, -23))
+	tree2.Parent = m
+	return m
+end
+
+--------------------------------------------------------------------------
+-- Public API
+--------------------------------------------------------------------------
+function Models.has(id: string): boolean
+	return Builders[id] ~= nil
+end
+
+function Models.build(id: string, ...): Model
+	local builder = Builders[id]
+	assert(builder, "Walang model builder para sa: " .. tostring(id))
+	return builder(...)
+end
+
+return Models
+]]></ProtectedString></Properties></Item>
+<Item class="ModuleScript" referent="RBX3"><Properties><string name="Name">Util</string><ProtectedString name="Source"><![CDATA[--[[
+	Util — small helpers shared by server and client.
+]]
+
+local Util = {}
+
+-- Create an anchored, smooth part from a property table.
+-- Pass ClassName = "WedgePart" / "Seat" etc. to make other part types.
+function Util.part(props: { [string]: any }): BasePart
+	local part = Instance.new(props.ClassName or "Part") :: BasePart
+	part.Anchored = true
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+	if props.Shape then
+		(part :: any).Shape = props.Shape
+	end
+	for key, value in props do
+		if key ~= "ClassName" and key ~= "Parent" and key ~= "Shape" then
+			(part :: any)[key] = value
+		end
+	end
+	if props.Parent then
+		part.Parent = props.Parent
+	end
+	return part
+end
+
+-- CFrame at `pos` whose +Z (our "front") faces `target` on the horizontal plane.
+function Util.facing(pos: Vector3, target: Vector3): CFrame
+	local flatTarget = Vector3.new(target.X, pos.Y, target.Z)
+	if (flatTarget - pos).Magnitude < 1e-3 then
+		return CFrame.new(pos)
+	end
+	return CFrame.lookAt(pos, pos + (pos - flatTarget))
+end
+
+-- Put a big, readable text label on one face of a part.
+function Util.surfaceText(part: BasePart, face: Enum.NormalId, text: string, color: Color3?, font: Enum.Font?)
+	local gui = Instance.new("SurfaceGui")
+	gui.Name = "SurfaceText"
+	gui.Face = face
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 40
+	gui.LightInfluence = 0.3
+
+	local label = Instance.new("TextLabel")
+	label.Name = "Label"
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.TextScaled = true
+	label.Font = font or Enum.Font.FredokaOne
+	label.TextColor3 = color or Color3.new(0.1, 0.1, 0.1)
+	label.Text = text
+	label.Parent = gui
+
+	gui.Parent = part
+	return label
+end
+
+function Util.formatPesos(amount: number?): string
+	local n = math.floor(amount or 0)
+	local digits = tostring(math.abs(n))
+	local withCommas = digits:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+	if withCommas:sub(1, 1) == "," then
+		withCommas = withCommas:sub(2)
+	end
+	return (if n < 0 then "-₱" else "₱") .. withCommas
+end
+
+function Util.formatClock(clockTime: number): string
+	local hour = math.floor(clockTime) % 24
+	local minute = math.floor((clockTime - math.floor(clockTime)) * 60)
+	local suffix = if hour < 12 then "AM" else "PM"
+	local hour12 = hour % 12
+	if hour12 == 0 then
+		hour12 = 12
+	end
+	return string.format("%d:%02d %s", hour12, minute, suffix)
+end
+
+function Util.formatHour(hour: number): string
+	hour = hour % 24
+	local suffix = if hour < 12 then "AM" else "PM"
+	local hour12 = hour % 12
+	if hour12 == 0 then
+		hour12 = 12
+	end
+	return hour12 .. suffix
+end
+
+-- Filipino part-of-day label for the clock.
+function Util.timeOfDay(clockTime: number): string
+	if clockTime < 5 then
+		return "Madaling-araw"
+	elseif clockTime < 11 then
+		return "Umaga"
+	elseif clockTime < 13 then
+		return "Tanghali"
+	elseif clockTime < 18 then
+		return "Hapon"
+	end
+	return "Gabi"
+end
+
+function Util.inHours(clockTime: number, hours: { number }?): boolean
+	if not hours then
+		return true
+	end
+	local open, close = hours[1], hours[2]
+	if open < close then
+		return clockTime >= open and clockTime < close
+	end
+	return clockTime >= open or clockTime < close -- wraps past midnight
+end
+
+function Util.averageNeeds(source: Instance, needOrder: { string }): number
+	local total = 0
+	for _, id in needOrder do
+		total += source:GetAttribute("Need_" .. id) or 100
+	end
+	return total / #needOrder
+end
+
+return Util
+]]></ProtectedString></Properties></Item>
+</Item>
+</Item>
+<Item class="ServerScriptService" referent="RBX20"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Folder" referent="RBX19"><Properties><string name="Name">Server</string></Properties><Item class="Script" referent="RBX6"><Properties><string name="Name">Main</string><ProtectedString name="Source"><![CDATA[--[[
+	Bahay Buhay — a Filipino-themed life simulation.
+	Server entry point: builds the world and wires all services together.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Util = require(ReplicatedStorage.Shared.Util)
+
+local Services = script.Parent:WaitForChild("Services")
+local Remotes = require(Services.Remotes)
+local Overhead = require(Services.Overhead)
+local NeedsService = require(Services.NeedsService)
+local ActionService = require(Services.ActionService)
+local StationService = require(Services.StationService)
+local LotService = require(Services.LotService)
+local BuildService = require(Services.BuildService)
+local DataService = require(Services.DataService)
+local TimeService = require(Services.TimeService)
+local NPCService = require(Services.NPCService)
+local WorldBuilder = require(Services.WorldBuilder)
+
+NeedsService.bind(ActionService)
+
+-- 1) World
+StationService.init()
+WorldBuilder.build()
+LotService.init()
+NPCService.init()
+TimeService.init()
+
+-- 2) Systems
+ActionService.init()
+NeedsService.start()
+BuildService.init()
+
+--------------------------------------------------------------------------
+-- Players
+--------------------------------------------------------------------------
+local function teleportHome(player: Player)
+	local lot = LotService.get(player)
+	local character = player.Character
+	if lot and character then
+		ActionService.stop(player, "cancel")
+		character:PivotTo(LotService.spawnCFrame(lot))
+	end
+end
+
+local function onCharacterAdded(player: Player, character: Model)
+	task.spawn(Overhead.attach, character)
+	local humanoid = character:WaitForChild("Humanoid", 10) :: Humanoid?
+	if humanoid then
+		humanoid.WalkSpeed = Config.WalkSpeed
+	end
+	character:WaitForChild("HumanoidRootPart", 10)
+	task.wait() -- let the default spawn finish before moving the character
+	teleportHome(player)
+end
+
+local function onPlayerAdded(player: Player)
+	player.CameraMaxZoomDistance = 90
+
+	local profile, isNew = DataService.load(player)
+	if not player.Parent then
+		return -- left while loading
+	end
+	DataService.apply(player, profile)
+
+	local lot = LotService.assign(player)
+	if lot then
+		BuildService.load(player, profile.Furniture)
+	end
+
+	player:SetAttribute("Loaded", true)
+
+	player.CharacterAdded:Connect(function(character)
+		onCharacterAdded(player, character)
+	end)
+	if player.Character then
+		onCharacterAdded(player, player.Character)
+	end
+
+	task.delay(3, function()
+		if not player.Parent then
+			return
+		end
+		if isNew then
+			Remotes.notify(player, "🏠 Mabuhay! Maligayang pagdating sa Barangay Bahay Buhay!", "good")
+			Remotes.notify(player, "May " .. Util.formatPesos(Config.StartingPesos) .. " kang puhunan. Alagaan ang sarili, magtrabaho, at pagandahin ang bahay mo!", "info")
+		else
+			Remotes.notify(player, "🏠 Maligayang pagbabalik, " .. player.DisplayName .. "!", "good")
+		end
+		if not lot then
+			Remotes.notify(player, "Puno na ang mga lote sa barangay. Makikitira ka muna sa plaza!", "warn")
+		end
+	end)
+end
+
+local function savePlayer(player: Player)
+	DataService.save(player, BuildService.serialize(player))
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+for _, player in Players:GetPlayers() do
+	task.spawn(onPlayerAdded, player)
+end
+
+Players.PlayerRemoving:Connect(function(player)
+	ActionService.stop(player, "leave")
+	savePlayer(player) -- must happen before the lot is cleared
+	LotService.release(player)
+	DataService.release(player)
+end)
+
+Remotes.GoHome.OnServerEvent:Connect(function(player)
+	if LotService.get(player) then
+		teleportHome(player)
+	else
+		Remotes.notify(player, "Wala kang sariling lote.", "warn")
+	end
+end)
+
+-- Autosave
+task.spawn(function()
+	while true do
+		task.wait(Config.AutosaveSeconds)
+		for _, player in Players:GetPlayers() do
+			task.spawn(savePlayer, player)
+		end
+	end
+end)
+
+game:BindToClose(function()
+	local pending = 0
+	for _, player in Players:GetPlayers() do
+		pending += 1
+		task.spawn(function()
+			savePlayer(player)
+			pending -= 1
+		end)
+	end
+	local deadline = os.clock() + 25
+	while pending > 0 and os.clock() < deadline do
+		task.wait(0.2)
+	end
+end)
+
+--------------------------------------------------------------------------
+-- Every morning: bills, relationship decay, greeting
+--------------------------------------------------------------------------
+TimeService.onMorning(function(day)
+	for _, player in Players:GetPlayers() do
+		if not player:GetAttribute("Loaded") then
+			continue
+		end
+		player:SetAttribute("DaysPlayed", (player:GetAttribute("DaysPlayed") or 0) + 1)
+		player:SetAttribute("EarnedToday", 0)
+
+		local bill = Config.BillBase + Config.BillPerFurniture * BuildService.count(player)
+		local pesos = player:GetAttribute("Pesos") or 0
+		local paid = math.min(bill, pesos)
+		player:SetAttribute("Pesos", pesos - paid)
+
+		Remotes.notify(player, string.format("☀️ Magandang umaga! Araw %d na.", day), "info")
+		if paid < bill then
+			Remotes.notify(player, "⚠️ Kulang ang pambayad sa kuryente at tubig! Magtrabaho ka na.", "bad")
+			NeedsService.add(player, "Fun", -15)
+		else
+			Remotes.notify(player, "🧾 Bayad na ang kuryente at tubig: " .. Util.formatPesos(bill), "info")
+		end
+
+		for _, npc in Config.NPCs do
+			local key = "Rel_" .. npc.id
+			player:SetAttribute(key, math.max(0, (player:GetAttribute(key) or 0) - Config.RelationshipDailyDecay))
+		end
+	end
+end)
+
+print(string.format("[%s v%s] Handa na ang barangay!", Config.GameName, Config.Version))
+]]></ProtectedString></Properties></Item>
+<Item class="Folder" referent="RBX18"><Properties><string name="Name">Services</string></Properties><Item class="ModuleScript" referent="RBX7"><Properties><string name="Name">ActionService</string><ProtectedString name="Source"><![CDATA[--[[
+	ActionService — runs timed interactions (sleeping, cooking, working, chatting…).
+
+	Flow: StationService (prompt/menu) → ActionService.start(player, station, actionId)
+	      → character is positioned at the station's UsePoint
+	      → every tick: needs change, pay & skill xp accumulate, progress updates
+	      → finishes after `duration`, or is cancelled (player moves / jumps / presses Itigil).
+
+	Replicated state lives in player attributes:
+	  CurrentAction (string verb) and ActionProgress (0..1).
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Lighting = game:GetService("Lighting")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Util = require(ReplicatedStorage.Shared.Util)
+local Remotes = require(script.Parent.Remotes)
+local Overhead = require(script.Parent.Overhead)
+local NeedsService = require(script.Parent.NeedsService)
+
+local ActionService = {}
+
+type ActiveAction = {
+	id: string,
+	def: any,
+	station: Model?,
+	elapsed: number,
+	paidFraction: number,
+	xpFraction: number,
+	seat: Seat?,
+	lying: boolean,
+	effectMult: number,
+	payMult: number,
+}
+
+local active: { [Player]: ActiveAction } = {}
+local TICK = 0.25
+local FISH = { "bangus", "tilapia", "galunggong", "lapu-lapu", "tamban", "dilis", "tulingan" }
+
+--------------------------------------------------------------------------
+-- Helpers
+--------------------------------------------------------------------------
+local function getParts(player: Player)
+	local character = player.Character
+	if not character then
+		return nil, nil
+	end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local root = character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not humanoid or not root or humanoid.Health <= 0 then
+		return nil, nil
+	end
+	return humanoid, root
+end
+
+local function skillLevel(player: Player, skill: string?): number
+	if not skill then
+		return 0
+	end
+	return Config.skillLevel(player:GetAttribute("Skill_" .. skill))
+end
+
+local function addSkillXp(player: Player, skill: string, xp: number)
+	local key = "Skill_" .. skill
+	local before = player:GetAttribute(key) or 0
+	local after = before + xp
+	player:SetAttribute(key, after)
+	local oldLevel, newLevel = Config.skillLevel(before), Config.skillLevel(after)
+	if newLevel > oldLevel then
+		local info = Config.Skills[skill]
+		Remotes.notify(player, string.format("%s Tumaas ang %s mo! Level %d na.", info.icon, info.label, newLevel), "good")
+	end
+end
+
+local function addRelationship(player: Player, npcId: string, amount: number)
+	local key = "Rel_" .. npcId
+	local before = player:GetAttribute(key) or 0
+	local after = math.clamp(before + amount, 0, 100)
+	player:SetAttribute(key, after)
+	local oldLabel, newLabel = Config.relationshipLabel(before), Config.relationshipLabel(after)
+	local npc = Config.NPCById[npcId]
+	if npc and oldLabel ~= newLabel and after > before then
+		Remotes.notify(player, string.format("❤️ %s mo na si %s!", newLabel, npc.name), "good")
+	end
+end
+
+local function otherPlayerNearby(player: Player, position: Vector3, radius: number): boolean
+	for _, other in Players:GetPlayers() do
+		if other ~= player and other.Character then
+			local root = other.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if root and (root.Position - position).Magnitude <= radius then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+local function standOffset(humanoid: Humanoid, root: BasePart): number
+	return humanoid.HipHeight + root.Size.Y / 2
+end
+
+local function stationUsable(station: Model, player: Player): (boolean, string?)
+	local userId = station:GetAttribute("InUseBy")
+	if userId and userId ~= player.UserId and Players:GetPlayerByUserId(userId) then
+		local npcId = station:GetAttribute("NpcId")
+		if npcId then
+			return false, "Abala pa si " .. Config.NPCById[npcId].name .. ". Hintay lang."
+		end
+		return false, "May gumagamit pa nito. Hintay lang."
+	end
+	return true
+end
+
+-- Move the character into position for the action.
+local function positionCharacter(state: ActiveAction, humanoid: Humanoid, root: BasePart)
+	local station = state.station
+	local point = station and station:FindFirstChild("UsePoint", true) :: BasePart?
+
+	if point and point:IsA("Seat") then
+		state.seat = point
+		point:Sit(humanoid)
+		return
+	end
+
+	root.Anchored = true
+	if state.def.pose == "lie" then
+		state.lying = true
+		humanoid.PlatformStand = true
+		local base: CFrame
+		if point then
+			base = point.CFrame
+		else
+			-- lie down right where you are (e.g. passing out)
+			local yaw = select(2, root.CFrame:ToOrientation())
+			local groundY = root.Position.Y - standOffset(humanoid, root)
+			base = CFrame.new(root.Position.X, groundY, root.Position.Z) * CFrame.Angles(0, yaw, 0)
+		end
+		root.CFrame = base * CFrame.new(0, 1, 0) * CFrame.Angles(math.pi / 2, 0, 0)
+	elseif point then
+		root.CFrame = point.CFrame + Vector3.new(0, standOffset(humanoid, root), 0)
+	elseif station then
+		local target = station:GetPivot().Position
+		local pos = root.Position
+		local flat = Vector3.new(target.X, pos.Y, target.Z)
+		if (flat - pos).Magnitude > 0.1 then
+			root.CFrame = CFrame.lookAt(pos, flat)
+		end
+	end
+end
+
+local function restoreCharacter(player: Player, state: ActiveAction)
+	local humanoid, root = getParts(player)
+	if not humanoid or not root then
+		return
+	end
+	if state.seat then
+		local weld = state.seat:FindFirstChild("SeatWeld")
+		if weld then
+			weld:Destroy()
+		end
+		humanoid.Sit = false
+		return
+	end
+	if state.lying then
+		humanoid.PlatformStand = false
+		local yaw = select(2, root.CFrame:ToOrientation())
+		root.CFrame = CFrame.new(root.Position + Vector3.new(0, 2.5, 0)) * CFrame.Angles(0, yaw, 0)
+	end
+	root.Anchored = false
+end
+
+local function runDoneHook(player: Player, state: ActiveAction)
+	local def = state.def
+	if def.doneHook == "VideokeScore" then
+		local score = math.clamp(math.random(55, 92) + skillLevel(player, "Pagkanta") * 2, 0, 100)
+		local comment = if score >= 95
+			then "PERFECT! Pang-concert ang boses mo! 🎉"
+			elseif score >= 80 then "Ang galing! Palakpakan!"
+			elseif score >= 65 then "Pwede na! Next song!"
+			else "Medyo sintunado... pero masaya naman!"
+		Remotes.notify(player, string.format("🎤 Videoke score: %d — %s", score, comment), "good")
+		if score >= 95 then
+			NeedsService.add(player, "Fun", 10)
+		end
+	elseif def.doneHook == "Fishing" then
+		local fish = FISH[math.random(1, #FISH)]
+		Remotes.notify(player, "🐟 Nakahuli ka ng " .. fish .. "! Naibenta mo sa palengke.", "good")
+	end
+end
+
+--------------------------------------------------------------------------
+-- Public API
+--------------------------------------------------------------------------
+function ActionService.isActive(player: Player): boolean
+	return active[player] ~= nil
+end
+
+function ActionService.currentActionId(player: Player): string?
+	local state = active[player]
+	return state and state.id
+end
+
+-- True while the current action is raising this need (so it doesn't also decay).
+function ActionService.isBoosting(player: Player, needId: string): boolean
+	local state = active[player]
+	return state ~= nil and (state.def.effects[needId] or 0) > 0
+end
+
+function ActionService.stop(player: Player, reason: string?)
+	local state = active[player]
+	if not state then
+		return
+	end
+	active[player] = nil
+
+	if state.station and state.station.Parent then
+		state.station:SetAttribute("InUseBy", nil)
+	end
+	player:SetAttribute("CurrentAction", nil)
+	player:SetAttribute("ActionProgress", nil)
+	Overhead.setBubble(player, nil)
+	restoreCharacter(player, state)
+
+	if reason == "done" then
+		local def = state.def
+		if def.relationship and state.station then
+			local npcId = state.station:GetAttribute("NpcId")
+			if npcId then
+				addRelationship(player, npcId, def.relationship)
+			end
+		end
+		runDoneHook(player, state)
+		if def.doneMessages then
+			Remotes.notify(player, def.doneMessages[math.random(1, #def.doneMessages)], "good")
+		end
+	end
+end
+
+local function begin(player: Player, actionId: string, station: Model?): (boolean, string?)
+	local def = Config.Actions[actionId]
+	if not def then
+		return false, "Hindi kilalang gawain."
+	end
+	local humanoid, root = getParts(player)
+	if not humanoid or not root then
+		return false, nil
+	end
+
+	if def.hours and not Util.inHours(Lighting.ClockTime, def.hours) then
+		return false, string.format(
+			"⏰ Hindi pa pwede ngayon. Bukas mula %s hanggang %s.",
+			Util.formatHour(def.hours[1]),
+			Util.formatHour(def.hours[2])
+		)
+	end
+
+	if station then
+		local ok, msg = stationUsable(station, player)
+		if not ok then
+			return false, msg
+		end
+	end
+
+	local cost = def.cost or 0
+	local pesos = player:GetAttribute("Pesos") or 0
+	if cost > pesos then
+		return false, "💸 Kulang ang pera mo! Kailangan mo ng " .. Util.formatPesos(cost) .. "."
+	end
+
+	if active[player] then
+		ActionService.stop(player, "switch")
+	end
+
+	if cost > 0 then
+		player:SetAttribute("Pesos", pesos - cost)
+	end
+
+	local level = skillLevel(player, def.skill)
+	local state: ActiveAction = {
+		id = actionId,
+		def = def,
+		station = station,
+		elapsed = 0,
+		paidFraction = 0,
+		xpFraction = 0,
+		seat = nil,
+		lying = false,
+		effectMult = if def.skillBoost then 1 + level * Config.SkillEffectBonus else 1,
+		payMult = NeedsService.getMood(player).payMult * (if def.payBoost then 1 + level * Config.SkillPayBonus else 1),
+	}
+	active[player] = state
+
+	if station then
+		station:SetAttribute("InUseBy", player.UserId)
+	end
+	player:SetAttribute("CurrentAction", def.verb or def.label)
+	player:SetAttribute("ActionProgress", 0)
+	Overhead.setBubble(player, def.bubble)
+	positionCharacter(state, humanoid, root)
+	return true, nil
+end
+
+function ActionService.start(player: Player, station: Model, actionId: string)
+	local ok, msg = begin(player, actionId, station)
+	if not ok and msg then
+		Remotes.notify(player, msg, "warn")
+	end
+	return ok
+end
+
+-- Actions not tied to an object (e.g. passing out from exhaustion).
+function ActionService.startSpecial(player: Player, actionId: string)
+	local ok, msg = begin(player, actionId, nil)
+	if not ok and msg then
+		Remotes.notify(player, msg, "warn")
+	end
+	return ok
+end
+
+local function step(player: Player, state: ActiveAction, dt: number)
+	local humanoid, root = getParts(player)
+	if not humanoid or not root then
+		ActionService.stop(player, "cancel")
+		return
+	end
+	if state.station and not state.station.Parent then
+		ActionService.stop(player, "cancel")
+		return
+	end
+	if state.seat and humanoid.SeatPart ~= state.seat then
+		-- give Seat:Sit a moment to weld before treating it as "stood up"
+		if state.elapsed > 0.75 then
+			ActionService.stop(player, "cancel")
+			return
+		end
+	end
+
+	local def = state.def
+	local frac = math.min(dt, def.duration - state.elapsed) / def.duration
+	state.elapsed += dt
+
+	for needId, amount in def.effects do
+		local mult = if amount > 0 then state.effectMult else 1
+		NeedsService.add(player, needId, amount * frac * mult)
+	end
+	if def.socialNearby and otherPlayerNearby(player, root.Position, 18) then
+		NeedsService.add(player, "Social", def.socialNearby * frac)
+	end
+
+	if def.pay then
+		state.paidFraction += def.pay * frac * state.payMult
+		local whole = math.floor(state.paidFraction)
+		if whole > 0 then
+			state.paidFraction -= whole
+			player:SetAttribute("Pesos", (player:GetAttribute("Pesos") or 0) + whole)
+			player:SetAttribute("EarnedToday", (player:GetAttribute("EarnedToday") or 0) + whole)
+		end
+	end
+
+	if def.skill and def.skillXp then
+		state.xpFraction += def.skillXp * frac
+		if state.xpFraction >= 1 then
+			local whole = math.floor(state.xpFraction)
+			state.xpFraction -= whole
+			addSkillXp(player, def.skill, whole)
+		end
+	end
+
+	player:SetAttribute("ActionProgress", math.clamp(state.elapsed / def.duration, 0, 1))
+	if state.elapsed >= def.duration then
+		ActionService.stop(player, "done")
+	end
+end
+
+function ActionService.init()
+	task.spawn(function()
+		local last = os.clock()
+		while true do
+			task.wait(TICK)
+			local now = os.clock()
+			local dt = now - last
+			last = now
+			for player, state in active do
+				step(player, state, dt)
+			end
+		end
+	end)
+
+	Remotes.CancelAction.OnServerEvent:Connect(function(player)
+		ActionService.stop(player, "cancel")
+	end)
+	Players.PlayerRemoving:Connect(function(player)
+		ActionService.stop(player, "leave")
+	end)
+end
+
+return ActionService
+]]></ProtectedString></Properties></Item>
+<Item class="ModuleScript" referent="RBX8"><Properties><string name="Name">BuildService</string><ProtectedString name="Source"><![CDATA[--[[
+	BuildService — buying, placing and selling furniture on your own lot.
+	The client sends lot-relative coordinates; the server validates everything
+	(ownership, bounds, money, limits) before spawning the model.
+]]
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Models = require(ReplicatedStorage.Shared.Models)
+local Util = require(ReplicatedStorage.Shared.Util)
+local Remotes = require(script.Parent.Remotes)
+local LotService = require(script.Parent.LotService)
+local StationService = require(script.Parent.StationService)
+
+local BuildService = {}
+
+local function isFiniteNumber(n: any): boolean
+	return type(n) == "number" and n == n and n ~= math.huge and n ~= -math.huge
+end
+
+function BuildService.spawn(lot, id: string, x: number, y: number, z: number, rotation: number): Model?
+	if not Config.FurnitureById[id] or not Models.has(id) then
+		return nil
+	end
+	local model = Models.build(id)
+	model:SetAttribute("FurnitureId", id)
+	if lot.owner then
+		model:SetAttribute("OwnerUserId", lot.owner.UserId)
+	end
+	model:SetAttribute("DisplayName", Config.FurnitureById[id].name)
+	model:PivotTo(lot.origin * CFrame.new(x, y, z) * CFrame.Angles(0, math.rad(rotation), 0))
+	model.Parent = lot.furniture
+	StationService.make(model)
+	return model
+end
+
+-- Furniture → plain table for saving (lot-relative, so it loads on any lot).
+function BuildService.serialize(player: Player): { any }
+	local lot = LotService.get(player)
+	local list = {}
+	if not lot then
+		return list
+	end
+	for _, model in lot.furniture:GetChildren() do
+		local id = model:GetAttribute("FurnitureId")
+		if id and model:IsA("Model") then
+			local rel = lot.origin:ToObjectSpace(model:GetPivot())
+			local _, ry, _ = rel:ToOrientation()
+			table.insert(list, {
+				id = id,
+				x = math.floor(rel.X * 100 + 0.5) / 100,
+				y = math.floor(rel.Y * 100 + 0.5) / 100,
+				z = math.floor(rel.Z * 100 + 0.5) / 100,
+				r = (math.floor(math.deg(ry) / 90 + 0.5) * 90) % 360,
+			})
+		end
+	end
+	return list
+end
+
+function BuildService.load(player: Player, furniture: { any }?)
+	local lot = LotService.get(player)
+	if not lot then
+		return
+	end
+	lot.furniture:ClearAllChildren()
+	for _, item in furniture or Config.StarterFurniture do
+		BuildService.spawn(lot, item.id, item.x, item.y, item.z, item.r or 0)
+	end
+end
+
+function BuildService.count(player: Player): number
+	local lot = LotService.get(player)
+	return if lot then #lot.furniture:GetChildren() else 0
+end
+
+local function place(player: Player, id: any, x: any, y: any, z: any, rotation: any): (boolean, string)
+	if type(id) ~= "string" or not Config.FurnitureById[id] then
+		return false, "Hindi kilalang gamit."
+	end
+	if not (isFiniteNumber(x) and isFiniteNumber(y) and isFiniteNumber(z) and isFiniteNumber(rotation)) then
+		return false, "Maling posisyon."
+	end
+	local lot = LotService.get(player)
+	if not lot then
+		return false, "Wala kang lote."
+	end
+	local half = Config.LotHalfSize
+	if math.abs(x) > half or math.abs(z) > half or y < -0.5 or y > Config.MaxBuildHeight then
+		return false, "Sa loob lang ng lote mo pwedeng maglagay."
+	end
+	if #lot.furniture:GetChildren() >= Config.MaxFurniturePerLot then
+		return false, "Puno na ang bahay mo! Magbenta muna ng gamit."
+	end
+	local item = Config.FurnitureById[id]
+	local pesos = player:GetAttribute("Pesos") or 0
+	if pesos < item.price then
+		return false, "💸 Kulang ang pera mo para sa " .. item.name .. "."
+	end
+
+	x = math.floor(x * 2 + 0.5) / 2
+	z = math.floor(z * 2 + 0.5) / 2
+	rotation = (math.floor(rotation / 90 + 0.5) * 90) % 360
+
+	player:SetAttribute("Pesos", pesos - item.price)
+	BuildService.spawn(lot, id, x, y, z, rotation)
+	return true, "🛒 Nabili mo ang " .. item.name .. " (" .. Util.formatPesos(item.price) .. ")"
+end
+
+local function sell(player: Player, model: any): (boolean, string)
+	local lot = LotService.get(player)
+	if not lot or typeof(model) ~= "Instance" or model.Parent ~= lot.furniture then
+		return false, "Hindi mo ito pwedeng ibenta."
+	end
+	if model:GetAttribute("InUseBy") then
+		return false, "May gumagamit pa nito."
+	end
+	local item = Config.FurnitureById[model:GetAttribute("FurnitureId")]
+	local refund = if item then math.floor(item.price * Config.SellRefund) else 0
+	model:Destroy()
+	player:SetAttribute("Pesos", (player:GetAttribute("Pesos") or 0) + refund)
+	return true, "💰 Naibenta sa halagang " .. Util.formatPesos(refund)
+end
+
+function BuildService.init()
+	Remotes.PlaceFurniture.OnServerInvoke = function(player, id, x, y, z, rotation)
+		local ok, msg = place(player, id, x, y, z, rotation)
+		return ok, msg
+	end
+	Remotes.SellFurniture.OnServerInvoke = function(player, model)
+		local ok, msg = sell(player, model)
+		return ok, msg
+	end
+end
+
+return BuildService
+]]></ProtectedString></Properties></Item>
+<Item class="ModuleScript" referent="RBX9"><Properties><string name="Name">DataService</string><ProtectedString name="Source"><![CDATA[--[[
+	DataService — loads and saves player progress with DataStoreService.
+
+	Saved: pesos, needs, skills, relationships, furniture layout.
+	In Studio, enable Game Settings → Security → "Enable Studio Access to API Services"
+	to test saving. Without it the game still runs; progress just isn't saved.
+]]
+
+local DataStoreService = game:GetService("DataStoreService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+
+local DataService = {}
+
+local store: DataStore? = nil
+do
+	local ok, result = pcall(function()
+		return DataStoreService:GetDataStore(Config.DataStoreName)
+	end)
+	if ok then
+		store = result
+	else
+		warn("[Bahay Buhay] DataStore unavailable, progress will not be saved:", result)
+	end
+end
+
+local canSave: { [Player]: boolean } = {}
+
+local function key(player: Player): string
+	return "player_" .. player.UserId
+end
+
+function DataService.defaultProfile()
+	local needs = {}
+	for _, id in Config.NeedOrder do
+		needs[id] = 85
+	end
+	return {
+		Version = 1,
+		Pesos = Config.StartingPesos,
+		Needs = needs,
+		Skills = {},
+		Relationships = {},
+		Furniture = nil, -- nil = give starter furniture
+		DaysPlayed = 0,
+	}
+end
+
+function DataService.load(player: Player)
+	local data = nil
+	local success = false
+	if store then
+		for attempt = 1, 3 do
+			local ok, result = pcall(function()
+				return store:GetAsync(key(player))
+			end)
+			if ok then
+				data = result
+				success = true
+				break
+			end
+			warn(string.format("[Bahay Buhay] Load failed for %s (attempt %d): %s", player.Name, attempt, tostring(result)))
+			if RunService:IsStudio() then
+				break -- usually "API access not enabled"; don't make testers wait
+			end
+			task.wait(attempt * 1.5)
+		end
+	end
+	canSave[player] = success
+
+	local profile = DataService.defaultProfile()
+	local isNew = true
+	if type(data) == "table" then
+		isNew = false
+		profile.Pesos = tonumber(data.Pesos) or profile.Pesos
+		profile.DaysPlayed = tonumber(data.DaysPlayed) or 0
+		if type(data.Needs) == "table" then
+			for id in profile.Needs do
+				profile.Needs[id] = tonumber(data.Needs[id]) or profile.Needs[id]
+			end
+		end
+		profile.Skills = if type(data.Skills) == "table" then data.Skills else {}
+		profile.Relationships = if type(data.Relationships) == "table" then data.Relationships else {}
+		profile.Furniture = if type(data.Furniture) == "table" then data.Furniture else nil
+	end
+	return profile, isNew
+end
+
+-- Push a profile into player attributes (the live source of truth while playing).
+function DataService.apply(player: Player, profile)
+	player:SetAttribute("Pesos", profile.Pesos)
+	player:SetAttribute("DaysPlayed", profile.DaysPlayed)
+	for _, id in Config.NeedOrder do
+		player:SetAttribute("Need_" .. id, profile.Needs[id])
+	end
+	for id in Config.Skills do
+		player:SetAttribute("Skill_" .. id, tonumber(profile.Skills[id]) or 0)
+	end
+	for _, npc in Config.NPCs do
+		player:SetAttribute("Rel_" .. npc.id, tonumber(profile.Relationships[npc.id]) or 0)
+	end
+end
+
+function DataService.collect(player: Player, furniture: { any })
+	local profile = DataService.defaultProfile()
+	profile.Pesos = player:GetAttribute("Pesos") or 0
+	profile.DaysPlayed = player:GetAttribute("DaysPlayed") or 0
+	for _, id in Config.NeedOrder do
+		profile.Needs[id] = math.floor((player:GetAttribute("Need_" .. id) or 85) * 10) / 10
+	end
+	for id in Config.Skills do
+		profile.Skills[id] = player:GetAttribute("Skill_" .. id) or 0
+	end
+	for _, npc in Config.NPCs do
+		profile.Relationships[npc.id] = player:GetAttribute("Rel_" .. npc.id) or 0
+	end
+	profile.Furniture = furniture
+	return profile
+end
+
+function DataService.save(player: Player, furniture: { any })
+	if not store or not canSave[player] or not player:GetAttribute("Loaded") then
+		return
+	end
+	local profile = DataService.collect(player, furniture)
+	local ok, err = pcall(function()
+		store:UpdateAsync(key(player), function()
+			return profile
+		end)
+	end)
+	if not ok then
+		warn("[Bahay Buhay] Save failed for " .. player.Name .. ": " .. tostring(err))
+	end
+end
+
+function DataService.release(player: Player)
+	canSave[player] = nil
+end
+
+return DataService
+]]></ProtectedString></Properties></Item>
+<Item class="ModuleScript" referent="RBX10"><Properties><string name="Name">LotService</string><ProtectedString name="Source"><![CDATA[--[[
+	LotService — six residential lots (with a bahay kubo each) around the plaza.
+	Each joining player is given a free lot; it is cleared when they leave.
+
+	Lot model layout (in workspace.Lots):
+	  LotN (Model, attribute OwnerUserId)
+	    ├─ Origin    invisible part; its CFrame is the lot's coordinate frame (+Z faces the road)
+	    ├─ Furniture folder of placed furniture models
+	    └─ … plot, fence, house, sign
+]]
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Models = require(ReplicatedStorage.Shared.Models)
+local Util = require(ReplicatedStorage.Shared.Util)
+
+local LotService = {}
+
+export type Lot = {
+	index: number,
+	origin: CFrame,
+	model: Model,
+	furniture: Folder,
+	owner: Player?,
+}
+
+local lots: { Lot } = {}
+
+-- Lot centres and the direction toward the road they face.
+local LOT_LAYOUT = {
+	{ pos = Vector3.new(-60, 0.2, 115), toRoad = Vector3.new(0, 0, -1) },
+	{ pos = Vector3.new(0, 0.2, 115), toRoad = Vector3.new(0, 0, -1) },
+	{ pos = Vector3.new(60, 0.2, 115), toRoad = Vector3.new(0, 0, -1) },
+	{ pos = Vector3.new(-60, 0.2, -115), toRoad = Vector3.new(0, 0, 1) },
+	{ pos = Vector3.new(0, 0.2, -115), toRoad = Vector3.new(0, 0, 1) },
+	{ pos = Vector3.new(60, 0.2, -115), toRoad = Vector3.new(0, 0, 1) },
+}
+
+local function setSign(lot: Lot, text: string)
+	local sign = lot.model:FindFirstChild("Sign", true)
+	local label = sign and sign:FindFirstChild("Label", true)
+	if label then
+		(label :: TextLabel).Text = text
+	end
+end
+
+function LotService.init()
+	local folder = Instance.new("Folder")
+	folder.Name = "Lots"
+	folder.Parent = workspace
+
+	for index, layout in LOT_LAYOUT do
+		-- lookAt makes -Z face the target; we want +Z to face the road.
+		local origin = CFrame.lookAt(layout.pos, layout.pos - layout.toRoad)
+		local model = Models.build("Lot")
+		model.Name = "Lot" .. index
+		model:PivotTo(origin)
+
+		Util.part({
+			Name = "Origin",
+			Size = Vector3.new(1, 1, 1),
+			CFrame = origin,
+			Transparency = 1,
+			CanCollide = false,
+			CanTouch = false,
+			CanQuery = false,
+			Parent = model,
+		})
+		local furniture = Instance.new("Folder")
+		furniture.Name = "Furniture"
+		furniture.Parent = model
+
+		model:SetAttribute("LotIndex", index)
+		model.Parent = folder
+
+		lots[index] = { index = index, origin = origin, model = model, furniture = furniture, owner = nil }
+	end
+end
+
+function LotService.assign(player: Player): Lot?
+	for _, lot in lots do
+		if lot.owner == nil then
+			lot.owner = player
+			lot.model:SetAttribute("OwnerUserId", player.UserId)
+			player:SetAttribute("LotIndex", lot.index)
+			setSign(lot, "Bahay ni " .. player.DisplayName)
+			return lot
+		end
+	end
+	return nil
+end
+
+function LotService.release(player: Player)
+	for _, lot in lots do
+		if lot.owner == player then
+			lot.owner = nil
+			lot.model:SetAttribute("OwnerUserId", nil)
+			lot.furniture:ClearAllChildren()
+			setSign(lot, "Bakanteng Lote")
+		end
+	end
+end
+
+function LotService.get(player: Player): Lot?
+	for _, lot in lots do
+		if lot.owner == player then
+			return lot
+		end
+	end
+	return nil
+end
+
+-- Where a player appears at home: in the yard, facing the house.
+function LotService.spawnCFrame(lot: Lot): CFrame
+	return lot.origin * CFrame.new(0, 3.5, 18)
+end
+
+function LotService.all(): { Lot }
+	return lots
+end
+
+return LotService
+]]></ProtectedString></Properties></Item>
+<Item class="ModuleScript" referent="RBX11"><Properties><string name="Name">NPCService</string><ProtectedString name="Source"><![CDATA[--[[
+	NPCService — the neighbours (mga kapitbahay) who wander the barangay.
+	Talk to them to raise Pakikisama and build a relationship.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Util = require(ReplicatedStorage.Shared.Util)
+local StationService = require(script.Parent.StationService)
+
+local NPCService = {}
+
+local C = Color3.fromRGB
+
+-- Roblox's default R15 animation ids (the same ones the stock Animate script uses).
+local WALK_ANIM = "rbxassetid://507777826"
+local IDLE_ANIM = "rbxassetid://507766388"
+
+local function weldTo(head: BasePart, part: BasePart, offset: CFrame)
+	part.Anchored = false
+	part.CanCollide = false
+	part.Massless = true
+	part.CFrame = head.CFrame * offset
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = head
+	weld.Part1 = part
+	weld.Parent = part
+	part.Parent = head.Parent
+end
+
+local function addAccessory(model: Model, kind: string?)
+	local head = model:FindFirstChild("Head") :: BasePart?
+	local torso = (model:FindFirstChild("UpperTorso") or model:FindFirstChild("Torso")) :: BasePart?
+	if not head then
+		return
+	end
+	if kind == "Salakot" then
+		-- traditional wide farmer's hat
+		weldTo(head, Util.part({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.25, 3.2, 3.2), Color = C(205, 170, 100), Material = Enum.Material.Fabric }),
+			CFrame.new(0, 0.75, 0) * CFrame.Angles(0, 0, math.pi / 2))
+		weldTo(head, Util.part({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 1.6, 1.6), Color = C(185, 150, 85), Material = Enum.Material.Fabric }),
+			CFrame.new(0, 1.05, 0) * CFrame.Angles(0, 0, math.pi / 2))
+	elseif kind == "Bun" then
+		weldTo(head, Util.part({ Shape = Enum.PartType.Ball, Size = Vector3.new(1.3, 1.3, 1.3), Color = C(200, 200, 205), Material = Enum.Material.Fabric }),
+			CFrame.new(0, 0.2, 0.15))
+		weldTo(head, Util.part({ Shape = Enum.PartType.Ball, Size = Vector3.new(0.7, 0.7, 0.7), Color = C(200, 200, 205), Material = Enum.Material.Fabric }),
+			CFrame.new(0, 0.5, 0.7))
+	elseif kind == "Towel" and torso then
+		weldTo(torso, Util.part({ Size = Vector3.new(0.6, 0.15, 1.4), Color = C(245, 245, 245), Material = Enum.Material.Fabric }),
+			CFrame.new(0.55, 1.05, 0))
+		weldTo(head, Util.part({ Size = Vector3.new(1.3, 0.35, 1.3), Color = C(40, 80, 160), Material = Enum.Material.Fabric }),
+			CFrame.new(0, 0.65, 0))
+	elseif kind == "Apron" and torso then
+		weldTo(torso, Util.part({ Size = Vector3.new(1.6, 1.8, 0.1), Color = C(255, 240, 200), Material = Enum.Material.Fabric }),
+			CFrame.new(0, -0.6, -0.55))
+	end
+end
+
+local function buildRig(def): Model?
+	local ok, result = pcall(function()
+		local desc = Instance.new("HumanoidDescription")
+		desc.HeadColor = def.skin
+		desc.LeftArmColor = def.skin
+		desc.RightArmColor = def.skin
+		desc.TorsoColor = def.shirt
+		desc.LeftLegColor = def.pants
+		desc.RightLegColor = def.pants
+		return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
+	end)
+	if ok and result then
+		return result
+	end
+	warn("[Bahay Buhay] Could not build NPC rig for " .. def.name .. ": " .. tostring(result))
+	return nil
+end
+
+local function speechBubble(model: Model)
+	local head = model:FindFirstChild("Head")
+	if not head then
+		return nil
+	end
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "Speech"
+	gui.Size = UDim2.new(8, 0, 1.6, 0)
+	gui.StudsOffset = Vector3.new(0, 3.4, 0)
+	gui.MaxDistance = 60
+	gui.Enabled = false
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundColor3 = Color3.new(1, 1, 1)
+	label.TextColor3 = C(40, 30, 30)
+	label.Font = Enum.Font.GothamMedium
+	label.TextScaled = true
+	label.Parent = gui
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.4, 0)
+	corner.Parent = label
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0.05, 0)
+	pad.PaddingRight = UDim.new(0.05, 0)
+	pad.Parent = label
+	gui.Parent = head
+	return gui
+end
+
+local function say(gui: BillboardGui?, text: string)
+	if not gui then
+		return
+	end
+	(gui:FindFirstChildOfClass("TextLabel") :: TextLabel).Text = text
+	gui.Enabled = true
+	task.delay(4, function()
+		if gui.Parent then
+			gui.Enabled = false
+		end
+	end)
+end
+
+local function playAnimations(humanoid: Humanoid)
+	local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
+	local ok = pcall(function()
+		local walk = Instance.new("Animation")
+		walk.AnimationId = WALK_ANIM
+		local idle = Instance.new("Animation")
+		idle.AnimationId = IDLE_ANIM
+		local walkTrack = animator:LoadAnimation(walk)
+		local idleTrack = animator:LoadAnimation(idle)
+		idleTrack.Looped = true
+		walkTrack.Looped = true
+		idleTrack:Play()
+		humanoid.Running:Connect(function(speed)
+			if speed > 0.5 then
+				if not walkTrack.IsPlaying then
+					walkTrack:Play(0.2)
+				end
+			elseif walkTrack.IsPlaying then
+				walkTrack:Stop(0.2)
+			end
+		end)
+	end)
+	if not ok then
+		warn("[Bahay Buhay] NPC animations unavailable")
+	end
+end
+
+local function wander(model: Model, def, humanoid: Humanoid, root: BasePart, speech)
+	local home = def.home
+	local radius = 14
+	local talkingTo = nil
+	while model.Parent do
+		local userId = model:GetAttribute("InUseBy")
+		if userId then
+			if talkingTo ~= userId then
+				talkingTo = userId
+				say(speech, def.lines[math.random(1, #def.lines)])
+			end
+			humanoid:MoveTo(root.Position)
+			local player = Players:GetPlayerByUserId(userId)
+			local otherRoot = player and player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			if otherRoot then
+				local pos = root.Position
+				local target = Vector3.new(otherRoot.Position.X, pos.Y, otherRoot.Position.Z)
+				if (target - pos).Magnitude > 0.5 then
+					root.CFrame = CFrame.lookAt(pos, target)
+				end
+			end
+			task.wait(0.5)
+		else
+			talkingTo = nil
+			local angle = math.random() * math.pi * 2
+			local dist = math.random() * radius
+			humanoid:MoveTo(home + Vector3.new(math.cos(angle) * dist, 0, math.sin(angle) * dist))
+			local reached = false
+			local conn = humanoid.MoveToFinished:Connect(function()
+				reached = true
+			end)
+			local t0 = os.clock()
+			while not reached and os.clock() - t0 < 8 and not model:GetAttribute("InUseBy") do
+				task.wait(0.2)
+			end
+			conn:Disconnect()
+			if math.random() < 0.25 and not model:GetAttribute("InUseBy") then
+				say(speech, def.lines[math.random(1, #def.lines)])
+			end
+			local idleUntil = os.clock() + math.random(2, 6)
+			while os.clock() < idleUntil and not model:GetAttribute("InUseBy") do
+				task.wait(0.2)
+			end
+		end
+	end
+end
+
+function NPCService.init()
+	local folder = Instance.new("Folder")
+	folder.Name = "NPCs"
+	folder.Parent = workspace
+
+	for _, def in Config.NPCs do
+		task.spawn(function()
+			local model = buildRig(def)
+			if not model then
+				return
+			end
+			model.Name = def.name
+			local humanoid = model:FindFirstChildOfClass("Humanoid") :: Humanoid
+			local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
+			humanoid.DisplayName = def.name
+			humanoid.WalkSpeed = def.walkSpeed or 8
+			humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+			local animate = model:FindFirstChild("Animate")
+			if animate then
+				animate:Destroy()
+			end
+			addAccessory(model, def.accessory)
+
+			model:SetAttribute("StationId", def.station)
+			model:SetAttribute("NpcId", def.id)
+			model:SetAttribute("DisplayName", def.name)
+			model:PivotTo(CFrame.new(def.home + Vector3.new(0, 3, 0)))
+			model.Parent = folder
+			pcall(function()
+				root:SetNetworkOwner(nil)
+			end)
+			playAnimations(humanoid)
+			local speech = speechBubble(model)
+			StationService.make(model)
+			wander(model, def, humanoid, root, speech)
+		end)
+	end
+end
+
+return NPCService
+]]></ProtectedString></Properties></Item>
+<Item class="ModuleScript" referent="RBX12"><Properties><string name="Name">NeedsService</string><ProtectedString name="Source"><![CDATA[--[[
+	NeedsService — needs decay over time, mood, low-need warnings and consequences.
+	Needs are stored as player attributes ("Need_Hunger" …) so the client UI can read them directly.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Util = require(ReplicatedStorage.Shared.Util)
+local Remotes = require(script.Parent.Remotes)
+local Overhead = require(script.Parent.Overhead)
+
+local NeedsService = {}
+
+local actions -- ActionService, injected via bind() to avoid a circular require
+local warned: { [Player]: { [string]: boolean } } = {}
+
+function NeedsService.bind(actionService)
+	actions = actionService
+end
+
+function NeedsService.get(player: Player, id: string): number
+	return player:GetAttribute("Need_" .. id) or 100
+end
+
+function NeedsService.set(player: Player, id: string, value: number)
+	player:SetAttribute("Need_" .. id, math.clamp(value, 0, 100))
+end
+
+function NeedsService.add(player: Player, id: string, delta: number)
+	NeedsService.set(player, id, NeedsService.get(player, id) + delta)
+end
+
+function NeedsService.getMood(player: Player)
+	return Config.getMood(Util.averageNeeds(player, Config.NeedOrder))
+end
+
+local function checkWarnings(player: Player)
+	local state = warned[player]
+	if not state then
+		state = {}
+		warned[player] = state
+	end
+	for _, id in Config.NeedOrder do
+		local value = NeedsService.get(player, id)
+		if value < 20 and not state[id] then
+			state[id] = true
+			Remotes.notify(player, Config.Needs[id].icon .. " " .. Config.Needs[id].lowText, "warn")
+		elseif value > 35 then
+			state[id] = nil
+		end
+	end
+end
+
+local function applyConsequences(player: Player)
+	local busy = actions and actions.isActive(player)
+	local currentId = actions and actions.currentActionId(player)
+
+	-- Bagsak sa pagod: fall asleep on the spot
+	if NeedsService.get(player, "Energy") <= 0 and not busy and actions then
+		Remotes.notify(player, "😵 Bumagsak ka sa sobrang pagod! Nakatulog ka sa sahig.", "bad")
+		actions.startSpecial(player, "Nahimatay")
+	end
+
+	-- Naihi sa salawal
+	if NeedsService.get(player, "Bladder") <= 0 and currentId ~= "MagCR" then
+		NeedsService.set(player, "Bladder", 100)
+		NeedsService.set(player, "Hygiene", 0)
+		NeedsService.add(player, "Fun", -15)
+		Remotes.notify(player, "😳 Naku! Hindi ka umabot sa CR... Nakakahiya! Maligo ka na.", "bad")
+	end
+
+	-- Walk slower when hungry or exhausted
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		local tired = NeedsService.get(player, "Energy") < 12 or NeedsService.get(player, "Hunger") < 10
+		humanoid.WalkSpeed = if tired then Config.TiredWalkSpeed else Config.WalkSpeed
+	end
+end
+
+function NeedsService.tick(dt: number)
+	for _, player in Players:GetPlayers() do
+		if not player:GetAttribute("Loaded") then
+			continue
+		end
+		for _, id in Config.NeedOrder do
+			if not (actions and actions.isBoosting(player, id)) then
+				NeedsService.add(player, id, -Config.Needs[id].decayPerMinute / 60 * dt)
+			end
+		end
+		local mood = NeedsService.getMood(player)
+		player:SetAttribute("Mood", mood.label)
+		Overhead.setMoodColor(player, mood.color)
+		checkWarnings(player)
+		applyConsequences(player)
+	end
+end
+
+function NeedsService.start()
+	task.spawn(function()
+		local last = os.clock()
+		while true do
+			task.wait(1)
+			local now = os.clock()
+			NeedsService.tick(now - last)
+			last = now
+		end
+	end)
+	Players.PlayerRemoving:Connect(function(player)
+		warned[player] = nil
+	end)
+end
+
+return NeedsService
+]]></ProtectedString></Properties></Item>
+<Item class="ModuleScript" referent="RBX13"><Properties><string name="Name">Overhead</string><ProtectedString name="Source"><![CDATA[--[[
+	Overhead — the floating parol (star) above each player that shows their mood,
+	plus the emoji thought bubble that shows what they're doing.
+]]
+
+local Overhead = {}
+
+function Overhead.attach(character: Model)
+	local head = character:WaitForChild("Head", 10)
+	if not head then
+		return
+	end
+	local old = head:FindFirstChild("Overhead")
+	if old then
+		old:Destroy()
+	end
+
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "Overhead"
+	gui.Size = UDim2.new(4, 0, 2, 0)
+	gui.StudsOffset = Vector3.new(0, 3.1, 0)
+	gui.MaxDistance = 120
+	gui.LightInfluence = 0
+
+	local star = Instance.new("TextLabel")
+	star.Name = "Parol"
+	star.Size = UDim2.fromScale(0.5, 1)
+	star.Position = UDim2.fromScale(0.25, 0)
+	star.BackgroundTransparency = 1
+	star.Text = "★"
+	star.TextScaled = true
+	star.Font = Enum.Font.GothamBold
+	star.TextColor3 = Color3.fromRGB(80, 220, 120)
+	star.TextStrokeTransparency = 0.4
+	star.Parent = gui
+
+	local bubble = Instance.new("TextLabel")
+	bubble.Name = "Bubble"
+	bubble.Size = UDim2.fromScale(0.42, 0.84)
+	bubble.Position = UDim2.fromScale(0.78, -0.25)
+	bubble.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	bubble.BackgroundTransparency = 0.05
+	bubble.Text = ""
+	bubble.TextScaled = true
+	bubble.Visible = false
+	bubble.Parent = gui
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(1, 0)
+	corner.Parent = bubble
+
+	gui.Parent = head
+end
+
+local function getGui(player: Player): BillboardGui?
+	local character = player.Character
+	local head = character and character:FindFirstChild("Head")
+	return head and head:FindFirstChild("Overhead") :: BillboardGui?
+end
+
+function Overhead.setMoodColor(player: Player, color: Color3)
+	local gui = getGui(player)
+	if gui then
+		(gui:FindFirstChild("Parol") :: TextLabel).TextColor3 = color
+	end
+end
+
+function Overhead.setBubble(player: Player, emoji: string?)
+	local gui = getGui(player)
+	if gui then
+		local bubble = gui:FindFirstChild("Bubble") :: TextLabel
+		bubble.Text = emoji or ""
+		bubble.Visible = emoji ~= nil
+	end
+end
+
+return Overhead
+]]></ProtectedString></Properties></Item>
+<Item class="ModuleScript" referent="RBX14"><Properties><string name="Name">Remotes</string><ProtectedString name="Source"><![CDATA[--[[
+	Remotes — creates every RemoteEvent / RemoteFunction the game uses.
+	The client waits for ReplicatedStorage.Remotes.
+]]
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Remotes = {}
+
+local EVENTS = {
+	"OpenMenu", -- server → client (stationModel, stationId)
+	"RequestAction", -- client → server (stationModel, actionId)
+	"CancelAction", -- client → server ()
+	"Notify", -- server → client (text, kind)
+	"GoHome", -- client → server ()
+}
+local FUNCTIONS = {
+	"PlaceFurniture", -- (id, x, y, z, rotation) → ok, message
+	"SellFurniture", -- (model) → ok, message
+}
+
+local folder = Instance.new("Folder")
+folder.Name = "Remotes"
+
+for _, name in EVENTS do
+	local remote = Instance.new("RemoteEvent")
+	remote.Name = name
+	remote.Parent = folder
+	Remotes[name] = remote
+end
+for _, name in FUNCTIONS do
+	local remote = Instance.new("RemoteFunction")
+	remote.Name = name
+	remote.Parent = folder
+	Remotes[name] = remote
+end
+
+folder.Parent = ReplicatedStorage
+
+-- kind: "info" | "good" | "warn" | "bad"
+function Remotes.notify(player: Player, text: string, kind: string?)
+	Remotes.Notify:FireClient(player, text, kind or "info")
+end
+
+function Remotes.notifyAll(text: string, kind: string?)
+	Remotes.Notify:FireAllClients(text, kind or "info")
+end
+
+return Remotes
+]]></ProtectedString></Properties></Item>
+<Item class="ModuleScript" referent="RBX15"><Properties><string name="Name">StationService</string><ProtectedString name="Source"><![CDATA[--[[
+	StationService — turns every Model tagged "Station" into something interactive.
+	A ProximityPrompt is added; triggering it either starts the single action or
+	opens a choice menu on the client (e.g. the sari-sari store's list of snacks).
+]]
+
+local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(script.Parent.Remotes)
+local ActionService = require(script.Parent.ActionService)
+
+local StationService = {}
+
+local TAG = "Station"
+local MAX_USE_DISTANCE = 16
+
+local function promptParent(model: Model): BasePart?
+	local explicit = model:FindFirstChild("PromptPart", true)
+	if explicit and explicit:IsA("BasePart") then
+		return explicit
+	end
+	return model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
+end
+
+local function register(model: Instance)
+	if not model:IsA("Model") or model:GetAttribute("PromptReady") then
+		return
+	end
+	local stationId = model:GetAttribute("StationId")
+	local cfg = stationId and Config.Stations[stationId]
+	if not cfg or #cfg.actions == 0 then
+		return
+	end
+	local parent = promptParent(model)
+	if not parent then
+		return
+	end
+	model:SetAttribute("PromptReady", true)
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "StationPrompt"
+	prompt.ActionText = cfg.prompt or "Gamitin"
+	prompt.ObjectText = model:GetAttribute("DisplayName") or cfg.title
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 10
+	prompt.RequiresLineOfSight = false
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.Parent = parent
+
+	prompt.Triggered:Connect(function(player)
+		if #cfg.actions == 1 then
+			ActionService.start(player, model, cfg.actions[1])
+		else
+			Remotes.OpenMenu:FireClient(player, model, stationId)
+		end
+	end)
+end
+
+local function distanceOk(player: Player, model: Model): boolean
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local anchor = promptParent(model)
+	if not root or not anchor then
+		return false
+	end
+	return (root.Position - anchor.Position).Magnitude <= MAX_USE_DISTANCE
+end
+
+function StationService.init()
+	for _, model in CollectionService:GetTagged(TAG) do
+		register(model)
+	end
+	CollectionService:GetInstanceAddedSignal(TAG):Connect(register)
+
+	Remotes.RequestAction.OnServerEvent:Connect(function(player, model, actionId)
+		if typeof(model) ~= "Instance" or not model:IsA("Model") or type(actionId) ~= "string" then
+			return
+		end
+		if not CollectionService:HasTag(model, TAG) then
+			return
+		end
+		local cfg = Config.Stations[model:GetAttribute("StationId")]
+		if not cfg or not table.find(cfg.actions, actionId) then
+			return
+		end
+		if not distanceOk(player, model) then
+			Remotes.notify(player, "Lumapit ka muna.", "warn")
+			return
+		end
+		ActionService.start(player, model, actionId)
+	end)
+end
+
+-- Convenience for other services: tag a model so it becomes interactive.
+function StationService.make(model: Model)
+	CollectionService:AddTag(model, TAG)
+end
+
+return StationService
+]]></ProtectedString></Properties></Item>
+<Item class="ModuleScript" referent="RBX16"><Properties><string name="Name">TimeService</string><ProtectedString name="Source"><![CDATA[--[[
+	TimeService — day/night cycle. One in-game day lasts Config.DayLengthMinutes.
+	Switches on lamps and parols at night and fires onMorning callbacks at 6 AM.
+]]
+
+local CollectionService = game:GetService("CollectionService")
+local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+
+local TimeService = {}
+
+local morningCallbacks = {}
+local nightOn: boolean? = nil
+
+function TimeService.onMorning(callback: (day: number) -> ())
+	table.insert(morningCallbacks, callback)
+end
+
+local function setNightLights(on: boolean)
+	if nightOn == on then
+		return
+	end
+	nightOn = on
+	for _, part in CollectionService:GetTagged("NightLight") do
+		for _, child in part:GetChildren() do
+			if child:IsA("Light") then
+				child.Enabled = on
+			end
+		end
+	end
+end
+
+function TimeService.init()
+	Lighting.ClockTime = Config.StartClockTime
+	ReplicatedStorage:SetAttribute("Day", 1)
+
+	local hoursPerSecond = 24 / (Config.DayLengthMinutes * 60)
+	local day = 1
+
+	-- newly placed parols should match the current state
+	CollectionService:GetInstanceAddedSignal("NightLight"):Connect(function(part)
+		for _, child in part:GetChildren() do
+			if child:IsA("Light") then
+				child.Enabled = nightOn == true
+			end
+		end
+	end)
+
+	RunService.Heartbeat:Connect(function(dt)
+		local previous = Lighting.ClockTime
+		local now = previous + hoursPerSecond * dt
+		if now >= 24 then
+			now -= 24
+		end
+		Lighting.ClockTime = now
+
+		if previous < Config.MorningHour and now >= Config.MorningHour then
+			day += 1
+			ReplicatedStorage:SetAttribute("Day", day)
+			for _, callback in morningCallbacks do
+				task.spawn(callback, day)
+			end
+		end
+		setNightLights(now >= 18 or now < 6)
+	end)
+end
+
+return TimeService
+]]></ProtectedString></Properties></Item>
+<Item class="ModuleScript" referent="RBX17"><Properties><string name="Name">WorldBuilder</string><ProtectedString name="Source"><![CDATA[--[[
+	WorldBuilder — builds Barangay Bahay Buhay at server start.
+
+	Map (top view, +X east, +Z north):
+
+	              [Lot1]   [Lot2]   [Lot3]                [Simbahan]
+	   beach  ─────────── ring road ───────────
+	   & sea  │ Karinderya   Videoke            │
+	  (bangka)│        Bantayog   Basketball    │── road ── Jeepney terminal
+	          │ Sari-sari    Poso               │           Palengke
+	           ─────────── ring road ───────────
+	              [Lot4]   [Lot5]   [Lot6]            [Barangay Hall]
+]]
+
+local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Models = require(ReplicatedStorage.Shared.Models)
+local Util = require(ReplicatedStorage.Shared.Util)
+local StationService = require(script.Parent.StationService)
+
+local WorldBuilder = {}
+
+local C = Color3.fromRGB
+local V = Vector3.new
+local CF = CFrame.new
+local MAT = Enum.Material
+
+local world: Folder
+
+local function part(props)
+	props.Parent = props.Parent or world
+	return Util.part(props)
+end
+
+-- Build a model, place it, and make it interactive if it's a station.
+local function place(id: string, cf: CFrame, ...): Model
+	local model = Models.build(id, ...)
+	model:PivotTo(cf)
+	model.Parent = world
+	if model:GetAttribute("StationId") then
+		StationService.make(model)
+	end
+	return model
+end
+
+local function setupLighting()
+	Lighting.Brightness = 2.4
+	Lighting.Ambient = C(95, 85, 75)
+	Lighting.OutdoorAmbient = C(150, 140, 125)
+	Lighting.EnvironmentDiffuseScale = 0.6
+	Lighting.EnvironmentSpecularScale = 0.6
+	Lighting.GlobalShadows = true
+	Lighting.GeographicLatitude = 13 -- roughly the latitude of Bicol / Luzon
+
+	local atmosphere = Instance.new("Atmosphere")
+	atmosphere.Density = 0.28
+	atmosphere.Offset = 0.2
+	atmosphere.Color = C(215, 200, 180)
+	atmosphere.Decay = C(120, 110, 140)
+	atmosphere.Glare = 0.4
+	atmosphere.Haze = 1.2
+	atmosphere.Parent = Lighting
+
+	local color = Instance.new("ColorCorrectionEffect")
+	color.Saturation = 0.18
+	color.Contrast = 0.06
+	color.TintColor = C(255, 248, 235)
+	color.Parent = Lighting
+
+	local bloom = Instance.new("BloomEffect")
+	bloom.Intensity = 0.5
+	bloom.Size = 24
+	bloom.Threshold = 1.6
+	bloom.Parent = Lighting
+
+	local rays = Instance.new("SunRaysEffect")
+	rays.Intensity = 0.06
+	rays.Spread = 0.8
+	rays.Parent = Lighting
+end
+
+local function buildGround()
+	part({ Name = "Lupa", Size = V(460, 2, 600), CFrame = CF(80, -1, 0), Color = C(98, 160, 72), Material = MAT.Grass })
+	-- beach & sea
+	part({ Name = "Buhangin", Size = V(62, 1.6, 600), CFrame = CF(-131, -0.6, 0), Color = C(236, 214, 160), Material = MAT.Sand })
+	local terrain = workspace.Terrain
+	terrain:FillBlock(CF(-245, -10, 0), V(190, 4, 600), Enum.Material.Sand)
+	terrain:FillBlock(CF(-245, -4, 0), V(190, 8, 600), Enum.Material.Water)
+	terrain.WaterColor = C(40, 150, 170)
+	terrain.WaterTransparency = 0.6
+	terrain.WaterWaveSize = 0.12
+	terrain.WaterWaveSpeed = 8
+end
+
+local function road(cf: CFrame, size: Vector3, dashedAlongZ: boolean)
+	part({ Name = "Kalsada", Size = size, CFrame = cf, Color = C(60, 60, 64), Material = MAT.Asphalt })
+	local length = if dashedAlongZ then size.Z else size.X
+	local count = math.floor(length / 8)
+	for i = 0, count - 1 do
+		local offset = -length / 2 + 4 + i * 8
+		local local_ = if dashedAlongZ then CF(0, size.Y / 2 + 0.01, offset) else CF(offset, size.Y / 2 + 0.01, 0)
+		part({
+			Size = if dashedAlongZ then V(0.4, 0.02, 4) else V(4, 0.02, 0.4),
+			CFrame = cf * local_,
+			Color = C(250, 220, 80),
+			Material = MAT.SmoothPlastic,
+			CanCollide = false,
+		})
+	end
+end
+
+local function buildRoads()
+	road(CF(0, 0.1, 65), V(150, 0.2, 20), false)
+	road(CF(0, 0.1, -65), V(150, 0.2, 20), false)
+	road(CF(65, 0.1, 0), V(20, 0.2, 110), true)
+	road(CF(-65, 0.1, 0), V(20, 0.2, 110), true)
+	road(CF(112.5, 0.1, 0), V(75, 0.2, 20), false)
+	-- dirt paths from each lot's gate to the ring road
+	for _, x in { -60, 0, 60 } do
+		for _, z in { 81, -81 } do
+			part({ Size = V(6, 0.1, 12), CFrame = CF(x, 0.05, z), Color = C(150, 120, 85), Material = MAT.Ground })
+		end
+	end
+end
+
+local function buildPlaza()
+	part({ Name = "Plaza", Size = V(110, 0.3, 110), CFrame = CF(0, 0.15, 0), Color = C(205, 198, 185), Material = MAT.Pavement })
+	local top = 0.3
+	local centre = V(0, top, 0)
+
+	-- Basketball court (full court, two rings)
+	part({ Name = "Court", Size = V(26, 0.05, 46), CFrame = CF(24, top + 0.025, 0), Color = C(196, 92, 58), Material = MAT.SmoothPlastic })
+	for _, spec in {
+		{ V(26, 0.06, 0.3), CF(24, top + 0.03, 23) },
+		{ V(26, 0.06, 0.3), CF(24, top + 0.03, -23) },
+		{ V(0.3, 0.06, 46), CF(11, top + 0.03, 0) },
+		{ V(0.3, 0.06, 46), CF(37, top + 0.03, 0) },
+		{ V(26, 0.06, 0.3), CF(24, top + 0.03, 0) },
+	} do
+		part({ Size = spec[1], CFrame = spec[2], Color = C(250, 250, 250), Material = MAT.SmoothPlastic, CanCollide = false })
+	end
+	place("BasketballRing", Util.facing(V(24, top, -24), V(24, top, 0)))
+	place("BasketballRing", Util.facing(V(24, top, 24), V(24, top, 0)))
+
+	-- Stores
+	place("SariSari", Util.facing(V(-38, top, -36), centre))
+	place("Karinderya", Util.facing(V(-38, top, 36), centre))
+
+	-- Videoke pavilion with monobloc chairs
+	place("Pavilion", CF(-12, top, 40), 16, 12)
+	place("Videoke", Util.facing(V(-12, top + 0.4, 44), V(-12, top, 0)))
+	for i, x in { -17, -14, -10, -7 } do
+		local chair = place("Monobloc", Util.facing(V(x, top + 0.4, 36), V(-12, top, 44)) * CFrame.Angles(0, math.pi, 0),
+			if i % 2 == 0 then C(240, 70, 70) else Models.Palette.white)
+		chair.Name = "Monobloc"
+	end
+
+	-- Bantayog (monument) at the heart of the plaza, with benches
+	place("Bantayog", CF(-14, top, 0))
+	for _, spec in { { -14, -12, 0 }, { -14, 12, math.pi }, { -27, 0, math.pi / 2 } } do
+		place("Bench", CF(spec[1], top, spec[2]) * CFrame.Angles(0, spec[3], 0))
+	end
+
+	place("Poso", Util.facing(V(-20, top, -18), centre))
+
+	-- Street lamps & banderitas
+	local corners = { V(-52, top, -52), V(52, top, -52), V(52, top, 52), V(-52, top, 52) }
+	local tops = {}
+	for i, pos in corners do
+		local lamp = place("StreetLamp", Util.facing(pos, centre))
+		tops[i] = (lamp:FindFirstChild("Top") :: BasePart).Position
+	end
+	for _, pos in { V(0, top, -52), V(0, top, 52), V(-52, top, 0), V(52, top, 0) } do
+		place("StreetLamp", Util.facing(pos, centre))
+	end
+	local seed = 1
+	local function flags(a: Vector3, b: Vector3, sag: number)
+		local m = Models.build("Banderitas", a, b, sag, seed)
+		seed += 1
+		m.Parent = world
+	end
+	flags(tops[1], tops[3], 5)
+	flags(tops[2], tops[4], 5)
+	for i = 1, 4 do
+		flags(tops[i], tops[(i % 4) + 1], 3)
+	end
+
+	-- Coconut trees around the plaza edge
+	local rng = Random.new(42)
+	local keepOut = { V(-38, top, -36), V(-38, top, 36), V(-12, top, 40), V(24, top, 24), V(24, top, -24) }
+	for i = 0, 15 do
+		local a = i / 16 * math.pi * 2
+		local pos = V(math.cos(a) * 49, top, math.sin(a) * 49)
+		local clear = true
+		for _, spot in keepOut do
+			if (pos - spot).Magnitude < 15 then
+				clear = false
+			end
+		end
+		if clear then
+			place("CoconutTree", CF(pos), rng:NextInteger(1, 9999))
+		end
+	end
+end
+
+local function buildEastSide()
+	-- Jeepney terminal
+	place("Shed", Util.facing(V(115, 0.2, 16), V(115, 0.2, 0)))
+	place("Jeepney", CF(112, 0.2, 5) * CFrame.Angles(0, math.pi / 2, 0), "BAYAN - PALENGKE")
+	place("Jeepney", CF(138, 0.2, 5) * CFrame.Angles(0, math.pi / 2, 0), "BARANGAY - BAYBAY")
+
+	-- Palengke (wet & dry market)
+	part({ Size = V(42, 0.2, 18), CFrame = CF(115, 0.1, -30), Color = C(170, 165, 155), Material = MAT.Concrete })
+	for i, x in { 102, 115, 128 } do
+		place("Palengke", CF(x, 0.2, -28), i)
+	end
+	local signPost = part({ Size = V(16, 2.4, 0.4), CFrame = CF(115, 10.5, -19), Color = C(30, 110, 60) })
+	Util.surfaceText(signPost, Enum.NormalId.Back, "PALENGKE NG BAYAN", C(255, 240, 200))
+	for _, x in { 108, 122 } do
+		part({ Size = V(0.4, 10, 0.4), CFrame = CF(x, 5.2, -19), Color = Models.Palette.metal, Material = MAT.Metal })
+	end
+
+	-- Simbahan facing the road
+	place("Simbahan", Util.facing(V(126, 0, 52), V(126, 0, 0)))
+
+	-- Barangay hall
+	place("Building", Util.facing(V(125, 0.2, -88), V(125, 0.2, 0)), 30, 18, 12, C(235, 225, 200), "BARANGAY HALL")
+
+	for _, pos in { V(90, 0.2, 18), V(90, 0.2, -18), V(140, 0.2, 18), V(140, 0.2, -18) } do
+		place("StreetLamp", Util.facing(pos, V(pos.X, 0.2, 0)))
+	end
+end
+
+local function buildBeach()
+	local rng = Random.new(7)
+	for i = 0, 13 do
+		local z = -130 + i * 20 + rng:NextNumber(-5, 5)
+		local x = rng:NextNumber(-150, -110)
+		place("CoconutTree", CF(x, 0.2, z), rng:NextInteger(1, 9999))
+	end
+	place("Pavilion", CF(-125, 0.2, 40), 12, 10)
+	place("Bangka", CF(-172, -0.4, 10) * CFrame.Angles(0, 0.3, 0))
+	place("Bangka", CF(-180, -0.4, -22) * CFrame.Angles(0, -0.2, 0))
+	place("Bangka", CF(-168, -0.4, -55) * CFrame.Angles(0, 0.1, 0))
+end
+
+local function buildSpawn()
+	local spawn = Instance.new("SpawnLocation")
+	spawn.Name = "Plaza Spawn"
+	spawn.Size = V(8, 0.4, 8)
+	spawn.CFrame = CF(-2, 0.5, -22)
+	spawn.Anchored = true
+	spawn.Neutral = true
+	spawn.Duration = 0
+	spawn.Color = Models.Palette.flagYellow
+	spawn.Material = MAT.SmoothPlastic
+	spawn.TopSurface = Enum.SurfaceType.Smooth
+	spawn.Parent = world
+end
+
+function WorldBuilder.build()
+	world = Instance.new("Folder")
+	world.Name = "Barangay"
+	world.Parent = workspace
+
+	-- remove the default baseplate from a fresh template, if any
+	local baseplate = workspace:FindFirstChild("Baseplate")
+	if baseplate then
+		baseplate:Destroy()
+	end
+
+	setupLighting()
+	buildGround()
+	buildRoads()
+	buildPlaza()
+	buildEastSide()
+	buildBeach()
+	buildSpawn()
+end
+
+return WorldBuilder
+]]></ProtectedString></Properties></Item>
+</Item>
+</Item>
+</Item>
+<Item class="StarterPlayer" referent="RBX29"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX28"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="Folder" referent="RBX27"><Properties><string name="Name">Client</string></Properties><Item class="ModuleScript" referent="RBX21"><Properties><string name="Name">BuildMode</string><ProtectedString name="Source"><![CDATA[--[[
+	BuildMode — "Gawa" mode for buying and arranging furniture on your lot.
+
+	  Click a catalog card → a ghost preview follows your mouse (green = OK, red = not allowed)
+	  Left-click / tap : ilagay (place)      R : ikot (rotate 90°)
+	  X (while hovering your furniture) : ibenta (sell)
+	  Q : bitawan (deselect)                  B : lumabas (exit)
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Models = require(ReplicatedStorage.Shared.Models)
+local Util = require(ReplicatedStorage.Shared.Util)
+local Theme = require(script.Parent.UI.Theme)
+
+local create = Theme.create
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+
+local BuildMode = {}
+
+local notify: (string, string?) -> () = function() end
+local active = false
+local selectedId: string? = nil
+local ghost: Model? = nil
+local ghostHighlight: Highlight? = nil
+local hoverHighlight: Highlight
+local hovered: Model? = nil
+local rotation = 0
+local pending: { x: number, y: number, z: number, valid: boolean }? = nil
+local busy = false
+
+local catalog: Frame
+local hint: TextLabel
+local renderConn: RBXScriptConnection? = nil
+
+local GREEN = Color3.fromRGB(80, 230, 120)
+local RED = Color3.fromRGB(240, 70, 70)
+
+local function myLot(): Model?
+	local lots = workspace:FindFirstChild("Lots")
+	if not lots then
+		return nil
+	end
+	for _, lot in lots:GetChildren() do
+		if lot:GetAttribute("OwnerUserId") == player.UserId then
+			return lot
+		end
+	end
+	return nil
+end
+
+local function clearGhost()
+	if ghost then
+		ghost:Destroy()
+	end
+	ghost, ghostHighlight, selectedId, pending = nil, nil, nil, nil
+end
+
+local function makeGhost(id: string)
+	clearGhost()
+	local model = Models.build(id)
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.CanCollide = false
+			d.CanQuery = false
+			d.CanTouch = false
+			d.CastShadow = false
+			if d.Transparency < 1 then
+				d.Transparency = math.max(d.Transparency, 0.35)
+			end
+		elseif d:IsA("Light") then
+			d.Enabled = false
+		end
+	end
+	local highlight = Instance.new("Highlight")
+	highlight.FillTransparency = 0.65
+	highlight.OutlineTransparency = 0
+	highlight.DepthMode = Enum.HighlightDepthMode.Occluded
+	highlight.Parent = model
+	model.Parent = workspace
+	ghost, ghostHighlight, selectedId = model, highlight, id
+end
+
+local function furnitureAncestor(inst: Instance?): Model?
+	while inst and inst ~= workspace do
+		if inst:IsA("Model") and inst:GetAttribute("FurnitureId") then
+			return inst
+		end
+		inst = inst.Parent
+	end
+	return nil
+end
+
+local function mouseRay(): RaycastResult?
+	local mouse = UserInputService:GetMouseLocation()
+	local ray = camera:ViewportPointToRay(mouse.X, mouse.Y)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	local ignore = {}
+	if ghost then
+		table.insert(ignore, ghost)
+	end
+	if player.Character then
+		table.insert(ignore, player.Character)
+	end
+	params.FilterDescendantsInstances = ignore
+	return workspace:Raycast(ray.Origin, ray.Direction * 600, params)
+end
+
+local function update()
+	local lot = myLot()
+	local result = mouseRay()
+
+	-- hover for selling
+	local over = result and furnitureAncestor(result.Instance)
+	if over and over:GetAttribute("OwnerUserId") ~= player.UserId then
+		over = nil
+	end
+	hovered = if selectedId then nil else over
+	hoverHighlight.Adornee = hovered
+	hoverHighlight.Enabled = hovered ~= nil
+
+	if not ghost or not lot or not result then
+		pending = nil
+		return
+	end
+	local origin = (lot:FindFirstChild("Origin") :: BasePart).CFrame
+	local rel = origin:PointToObjectSpace(result.Position)
+	local x = math.floor(rel.X * 2 + 0.5) / 2
+	local z = math.floor(rel.Z * 2 + 0.5) / 2
+	local y = rel.Y
+	local half = Config.LotHalfSize
+	local item = Config.FurnitureById[selectedId :: string]
+	local inBounds = math.abs(x) <= half and math.abs(z) <= half and y >= -0.5 and y <= Config.MaxBuildHeight
+	local affordable = (player:GetAttribute("Pesos") or 0) >= item.price
+	local valid = inBounds and affordable
+	ghost:PivotTo(origin * CFrame.new(x, y, z) * CFrame.Angles(0, math.rad(rotation), 0))
+	if ghostHighlight then
+		ghostHighlight.FillColor = if valid then GREEN else RED
+		ghostHighlight.OutlineColor = if valid then GREEN else RED
+	end
+	pending = { x = x, y = y, z = z, valid = valid }
+end
+
+local function tryPlace()
+	if busy or not selectedId or not pending then
+		return
+	end
+	if not pending.valid then
+		local item = Config.FurnitureById[selectedId]
+		if (player:GetAttribute("Pesos") or 0) < item.price then
+			notify("💸 Kulang ang pera mo para sa " .. item.name .. ".", "warn")
+		else
+			notify("Sa loob lang ng lote mo pwedeng maglagay.", "warn")
+		end
+		return
+	end
+	busy = true
+	local id, p, r = selectedId, pending, rotation
+	task.spawn(function()
+		local ok, msg = Remotes.PlaceFurniture:InvokeServer(id, p.x, p.y, p.z, r)
+		notify(msg, if ok then "good" else "warn")
+		busy = false
+	end)
+end
+
+local function trySell()
+	if busy or not hovered then
+		return
+	end
+	busy = true
+	local target = hovered
+	task.spawn(function()
+		local ok, msg = Remotes.SellFurniture:InvokeServer(target)
+		notify(msg, if ok then "good" else "warn")
+		busy = false
+	end)
+end
+
+local function buildCatalog(gui: ScreenGui)
+	catalog = Theme.panel({
+		Name = "BuildCatalog",
+		Size = UDim2.new(0, 760, 0, 168),
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -12),
+		Visible = false,
+		Parent = gui,
+	})
+	Theme.label({
+		Text = "🔨 Gawa — Mga Gamit sa Bahay",
+		Font = Theme.fontTitle,
+		TextSize = 18,
+		TextColor3 = Theme.yellow,
+		Size = UDim2.new(1, -140, 0, 24),
+		Position = UDim2.fromOffset(12, 8),
+		Parent = catalog,
+	})
+	hint = Theme.label({
+		Text = "Klik: Ilagay · R: Ikot · X: Ibenta · Q: Bitawan · B: Lumabas",
+		TextSize = 13,
+		TextColor3 = Theme.textDim,
+		Size = UDim2.new(1, -140, 0, 16),
+		Position = UDim2.fromOffset(12, 32),
+		Parent = catalog,
+	})
+	local exit = Theme.button({
+		Text = "Lumabas",
+		BackgroundColor3 = Theme.red,
+		Size = UDim2.fromOffset(110, 34),
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -12, 0, 10),
+		Parent = catalog,
+	})
+	exit.Activated:Connect(function()
+		BuildMode.setActive(false)
+	end)
+
+	local scroller = create("ScrollingFrame", {
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Size = UDim2.new(1, -24, 0, 108),
+		Position = UDim2.fromOffset(12, 54),
+		ScrollingDirection = Enum.ScrollingDirection.X,
+		AutomaticCanvasSize = Enum.AutomaticSize.X,
+		CanvasSize = UDim2.new(),
+		ScrollBarThickness = 6,
+		Parent = catalog,
+	}, {
+		create("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			Padding = UDim.new(0, 8),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}),
+	})
+	for i, item in Config.Furniture do
+		local card = Theme.button({
+			Text = "",
+			LayoutOrder = i,
+			Size = UDim2.fromOffset(112, 96),
+			Parent = scroller,
+		})
+		Theme.label({ Text = item.icon, TextSize = 30, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 0, 40), Parent = card })
+		Theme.label({
+			Text = item.name,
+			Font = Theme.fontBold,
+			TextSize = 13,
+			TextWrapped = true,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			Size = UDim2.new(1, -8, 0, 30),
+			Position = UDim2.fromOffset(4, 40),
+			Parent = card,
+		})
+		Theme.label({
+			Text = Util.formatPesos(item.price),
+			TextSize = 13,
+			TextColor3 = Color3.fromRGB(140, 230, 140),
+			TextXAlignment = Enum.TextXAlignment.Center,
+			Size = UDim2.new(1, 0, 0, 18),
+			Position = UDim2.fromOffset(0, 72),
+			Parent = card,
+		})
+		card.Activated:Connect(function()
+			rotation = 0
+			makeGhost(item.id)
+			hint.Text = item.desc .. "  ·  Klik para ilagay, R para iikot"
+		end)
+	end
+end
+
+function BuildMode.setActive(on: boolean)
+	if on == active then
+		return
+	end
+	if on and not myLot() then
+		notify("Wala kang sariling lote para mag-ayos.", "warn")
+		return
+	end
+	active = on
+	catalog.Visible = on
+	if on then
+		renderConn = RunService.RenderStepped:Connect(update)
+		notify("🔨 Gawa mode: pumili ng gamit sa ibaba.", "info")
+	else
+		if renderConn then
+			renderConn:Disconnect()
+			renderConn = nil
+		end
+		clearGhost()
+		hovered = nil
+		hoverHighlight.Adornee = nil
+		hoverHighlight.Enabled = false
+	end
+end
+
+function BuildMode.toggle()
+	BuildMode.setActive(not active)
+end
+
+function BuildMode.isActive(): boolean
+	return active
+end
+
+function BuildMode.init(gui: ScreenGui, notifyFn: (string, string?) -> ())
+	notify = notifyFn
+	buildCatalog(gui)
+
+	hoverHighlight = Instance.new("Highlight")
+	hoverHighlight.Name = "SellHover"
+	hoverHighlight.FillColor = RED
+	hoverHighlight.FillTransparency = 0.7
+	hoverHighlight.OutlineColor = RED
+	hoverHighlight.Enabled = false
+	hoverHighlight.Parent = workspace
+
+	UserInputService.InputBegan:Connect(function(input, processed)
+		if processed then
+			return
+		end
+		if input.KeyCode == Enum.KeyCode.B then
+			BuildMode.toggle()
+			return
+		end
+		if not active then
+			return
+		end
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			tryPlace()
+		elseif input.KeyCode == Enum.KeyCode.R then
+			rotation = (rotation + 90) % 360
+		elseif input.KeyCode == Enum.KeyCode.X then
+			trySell()
+		elseif input.KeyCode == Enum.KeyCode.Q then
+			clearGhost()
+		end
+	end)
+end
+
+return BuildMode
+]]></ProtectedString></Properties></Item>
+<Item class="LocalScript" referent="RBX22"><Properties><string name="Name">Main</string><ProtectedString name="Source"><![CDATA[--[[
+	Bahay Buhay — client entry point.
+	Builds the HUD, menus and build mode, and cancels actions when the player moves.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+
+local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
+local HUD = require(script.Parent.UI.HUD)
+local Menus = require(script.Parent.UI.Menus)
+local BuildMode = require(script.Parent:WaitForChild("BuildMode"))
+
+-- wait for the server to finish loading our save
+if not player:GetAttribute("Loaded") then
+	player:GetAttributeChangedSignal("Loaded"):Wait()
+end
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "BahayBuhayHUD"
+gui.ResetOnSpawn = false
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local function cancelAction()
+	if player:GetAttribute("CurrentAction") then
+		Remotes.CancelAction:FireServer()
+	end
+end
+
+HUD.init(gui, cancelAction)
+Menus.init(gui)
+BuildMode.init(gui, HUD.notify)
+
+Remotes.Notify.OnClientEvent:Connect(function(text, kind)
+	HUD.notify(text, kind)
+end)
+
+--------------------------------------------------------------------------
+-- Side buttons
+--------------------------------------------------------------------------
+local buttons = Theme.create("Frame", {
+	Name = "Buttons",
+	BackgroundTransparency = 1,
+	Size = UDim2.fromOffset(90, 4 * 74),
+	AnchorPoint = Vector2.new(1, 0.5),
+	Position = UDim2.new(1, -12, 0.5, 0),
+	Parent = gui,
+}, {
+	Theme.create("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
+})
+
+local function sideButton(order: number, icon: string, text: string, onClick: () -> ())
+	local button = Theme.button({
+		Text = "",
+		LayoutOrder = order,
+		Size = UDim2.fromOffset(90, 66),
+		BackgroundColor3 = Theme.bg,
+		BackgroundTransparency = Theme.panelTransparency,
+		Parent = buttons,
+	})
+	Theme.stroke().Parent = button
+	Theme.label({ Text = icon, TextSize = 26, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 0, 38), Parent = button })
+	Theme.label({
+		Text = text,
+		Font = Theme.fontBold,
+		TextSize = 13,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		Size = UDim2.new(1, 0, 0, 20),
+		Position = UDim2.fromOffset(0, 40),
+		Parent = button,
+	})
+	button.Activated:Connect(onClick)
+end
+
+sideButton(1, "🏠", "Bahay", function()
+	Remotes.GoHome:FireServer()
+end)
+sideButton(2, "🔨", "Gawa (B)", BuildMode.toggle)
+sideButton(3, "📊", "Kasanayan", function()
+	Menus.toggle("skills")
+end)
+sideButton(4, "❤️", "Relasyon", function()
+	Menus.toggle("relationships")
+end)
+
+--------------------------------------------------------------------------
+-- Moving or jumping cancels the current action (works on keyboard, gamepad and touch)
+--------------------------------------------------------------------------
+local lastCancel = 0
+local function requestCancel()
+	if os.clock() - lastCancel > 0.5 then
+		lastCancel = os.clock()
+		cancelAction()
+	end
+end
+
+UserInputService.JumpRequest:Connect(function()
+	-- ignore the first moments of an action so a held key doesn't instantly cancel it
+	if (player:GetAttribute("ActionProgress") or 0) > 0.02 then
+		requestCancel()
+	end
+end)
+
+RunService.RenderStepped:Connect(function()
+	if not player:GetAttribute("CurrentAction") then
+		return
+	end
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid and humanoid.MoveDirection.Magnitude > 0.1 and (player:GetAttribute("ActionProgress") or 0) > 0.02 then
+		requestCancel()
+	end
+end)
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.Escape or input.KeyCode == Enum.KeyCode.Backspace then
+		Menus.closeAll()
+	end
+end)
+]]></ProtectedString></Properties></Item>
+<Item class="Folder" referent="RBX26"><Properties><string name="Name">UI</string></Properties><Item class="ModuleScript" referent="RBX23"><Properties><string name="Name">HUD</string><ProtectedString name="Source"><![CDATA[--[[
+	HUD — always-on screen elements:
+	  • top-left: pesos, day & clock, mood
+	  • bottom-left: the six need bars
+	  • bottom-centre: current action + progress + "Itigil" (stop) button
+	  • top-centre: toast notifications
+]]
+
+local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Util = require(ReplicatedStorage.Shared.Util)
+local Theme = require(script.Parent.Theme)
+
+local create = Theme.create
+local player = Players.LocalPlayer
+
+local HUD = {}
+
+local toastHolder: Frame
+local needFills: { [string]: Frame } = {}
+local needValues: { [string]: TextLabel } = {}
+local pesosLabel: TextLabel
+local clockLabel: TextLabel
+local moodLabel: TextLabel
+local actionFrame: Frame
+local actionLabel: TextLabel
+local actionFill: Frame
+
+local function buildStatusCard(gui: ScreenGui)
+	local card = Theme.panel({
+		Name = "Status",
+		Size = UDim2.fromOffset(270, 104),
+		Position = UDim2.fromOffset(12, 12),
+		Parent = gui,
+	})
+	Theme.label({
+		Text = "🏠 " .. Config.GameName,
+		Font = Theme.fontTitle,
+		TextSize = 20,
+		TextColor3 = Theme.yellow,
+		Size = UDim2.new(1, -24, 0, 24),
+		Position = UDim2.fromOffset(12, 8),
+		Parent = card,
+	})
+	pesosLabel = Theme.label({
+		Text = "₱0",
+		Font = Theme.fontBold,
+		TextSize = 22,
+		TextColor3 = Color3.fromRGB(140, 230, 140),
+		Size = UDim2.new(1, -24, 0, 24),
+		Position = UDim2.fromOffset(12, 34),
+		Parent = card,
+	})
+	clockLabel = Theme.label({
+		Text = "",
+		TextSize = 15,
+		TextColor3 = Theme.textDim,
+		Size = UDim2.new(1, -24, 0, 18),
+		Position = UDim2.fromOffset(12, 60),
+		Parent = card,
+	})
+	moodLabel = Theme.label({
+		Text = "★ Ayos lang",
+		Font = Theme.fontBold,
+		TextSize = 15,
+		Size = UDim2.new(1, -24, 0, 18),
+		Position = UDim2.fromOffset(12, 80),
+		Parent = card,
+	})
+end
+
+local function buildNeeds(gui: ScreenGui)
+	local rowHeight = 30
+	local panel = Theme.panel({
+		Name = "Needs",
+		Size = UDim2.fromOffset(270, 40 + rowHeight * #Config.NeedOrder),
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 12, 1, -12),
+		Parent = gui,
+	})
+	Theme.label({
+		Text = "Pangangailangan",
+		Font = Theme.fontTitle,
+		TextSize = 17,
+		TextColor3 = Theme.yellow,
+		Size = UDim2.new(1, -24, 0, 22),
+		Position = UDim2.fromOffset(12, 8),
+		Parent = panel,
+	})
+	for i, id in Config.NeedOrder do
+		local info = Config.Needs[id]
+		local y = 34 + (i - 1) * rowHeight
+		Theme.label({
+			Text = info.icon .. " " .. info.label,
+			TextSize = 14,
+			Size = UDim2.fromOffset(110, 20),
+			Position = UDim2.fromOffset(12, y),
+			Parent = panel,
+		})
+		local bar = create("Frame", {
+			BackgroundColor3 = Color3.fromRGB(20, 16, 14),
+			BorderSizePixel = 0,
+			Size = UDim2.fromOffset(110, 14),
+			Position = UDim2.fromOffset(120, y + 3),
+			Parent = panel,
+		}, { Theme.corner(7) })
+		local fill = create("Frame", {
+			BackgroundColor3 = info.color,
+			BorderSizePixel = 0,
+			Size = UDim2.fromScale(1, 1),
+			Parent = bar,
+		}, { Theme.corner(7) })
+		needFills[id] = fill
+		needValues[id] = Theme.label({
+			Text = "100",
+			TextSize = 13,
+			TextColor3 = Theme.textDim,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			Size = UDim2.fromOffset(30, 20),
+			Position = UDim2.fromOffset(230, y),
+			Parent = panel,
+		})
+	end
+end
+
+local function buildActionBar(gui: ScreenGui, onCancel: () -> ())
+	actionFrame = Theme.panel({
+		Name = "Action",
+		Size = UDim2.fromOffset(380, 64),
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -96),
+		Visible = false,
+		Parent = gui,
+	})
+	actionLabel = Theme.label({
+		Text = "",
+		Font = Theme.fontBold,
+		TextSize = 16,
+		Size = UDim2.new(1, -120, 0, 22),
+		Position = UDim2.fromOffset(14, 8),
+		Parent = actionFrame,
+	})
+	local bar = create("Frame", {
+		BackgroundColor3 = Color3.fromRGB(20, 16, 14),
+		BorderSizePixel = 0,
+		Size = UDim2.new(1, -120, 0, 14),
+		Position = UDim2.fromOffset(14, 38),
+		Parent = actionFrame,
+	}, { Theme.corner(7) })
+	actionFill = create("Frame", {
+		BackgroundColor3 = Theme.yellow,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(0, 1),
+		Parent = bar,
+	}, { Theme.corner(7) })
+	local stop = Theme.button({
+		Text = "Itigil",
+		BackgroundColor3 = Theme.red,
+		Size = UDim2.fromOffset(88, 40),
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -12, 0.5, 0),
+		Parent = actionFrame,
+	})
+	stop.Activated:Connect(onCancel)
+end
+
+local function refreshNeeds()
+	for _, id in Config.NeedOrder do
+		local value = player:GetAttribute("Need_" .. id) or 100
+		local fill = needFills[id]
+		fill.Size = UDim2.fromScale(math.clamp(value / 100, 0, 1), 1)
+		fill.BackgroundColor3 = if value < 25 then Color3.fromRGB(230, 60, 60) else Config.Needs[id].color
+		needValues[id].Text = tostring(math.floor(value + 0.5))
+	end
+	local mood = Config.getMood(Util.averageNeeds(player, Config.NeedOrder))
+	moodLabel.Text = "★ " .. mood.label
+	moodLabel.TextColor3 = mood.color
+end
+
+local function refreshAction()
+	local verb = player:GetAttribute("CurrentAction")
+	actionFrame.Visible = verb ~= nil
+	if verb then
+		actionLabel.Text = verb .. "..."
+		actionFill.Size = UDim2.fromScale(player:GetAttribute("ActionProgress") or 0, 1)
+	end
+end
+
+function HUD.notify(text: string, kind: string?)
+	local color = Theme.toast[kind or "info"] or Theme.toast.info
+	local toast = create("TextLabel", {
+		Text = text,
+		Font = Theme.fontBold,
+		TextSize = 16,
+		TextWrapped = true,
+		TextColor3 = Color3.new(1, 1, 1),
+		BackgroundColor3 = color,
+		BackgroundTransparency = 0.08,
+		Size = UDim2.new(1, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		Parent = toastHolder,
+	}, { Theme.corner(10), Theme.padding(10) })
+	task.delay(5, function()
+		local tween = TweenService:Create(toast, TweenInfo.new(0.5), { TextTransparency = 1, BackgroundTransparency = 1 })
+		tween:Play()
+		tween.Completed:Wait()
+		toast:Destroy()
+	end)
+	-- keep at most 5 toasts
+	local toasts = {}
+	for _, child in toastHolder:GetChildren() do
+		if child:IsA("TextLabel") then
+			table.insert(toasts, child)
+		end
+	end
+	if #toasts > 5 then
+		toasts[1]:Destroy()
+	end
+end
+
+function HUD.init(gui: ScreenGui, onCancel: () -> ())
+	buildStatusCard(gui)
+	buildNeeds(gui)
+	buildActionBar(gui, onCancel)
+
+	toastHolder = create("Frame", {
+		Name = "Toasts",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(420, 400),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 12),
+		Parent = gui,
+	}, {
+		create("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }),
+	})
+
+	player.AttributeChanged:Connect(function(name)
+		if name:sub(1, 5) == "Need_" then
+			refreshNeeds()
+		elseif name == "Pesos" then
+			pesosLabel.Text = Util.formatPesos(player:GetAttribute("Pesos"))
+		elseif name == "CurrentAction" or name == "ActionProgress" then
+			refreshAction()
+		end
+	end)
+	refreshNeeds()
+	refreshAction()
+	pesosLabel.Text = Util.formatPesos(player:GetAttribute("Pesos"))
+
+	task.spawn(function()
+		while gui.Parent do
+			local t = Lighting.ClockTime
+			local day = ReplicatedStorage:GetAttribute("Day") or 1
+			clockLabel.Text = string.format("Araw %d · %s · %s", day, Util.formatClock(t), Util.timeOfDay(t))
+			task.wait(0.5)
+		end
+	end)
+end
+
+return HUD
+]]></ProtectedString></Properties></Item>
+<Item class="ModuleScript" referent="RBX24"><Properties><string name="Name">Menus</string><ProtectedString name="Source"><![CDATA[--[[
+	Menus — the station choice menu ("Ano ang gagawin mo?") and the
+	Kasanayan (skills) and Relasyon (relationships) panels.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Util = require(ReplicatedStorage.Shared.Util)
+local Theme = require(script.Parent.Theme)
+
+local create = Theme.create
+local player = Players.LocalPlayer
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+
+local Menus = {}
+
+local gui: ScreenGui
+local stationPanel: Frame?
+local sidePanel: Frame?
+local sidePanelKind: string?
+
+local function effectSummary(def): string
+	local parts = {}
+	for _, id in Config.NeedOrder do
+		local amount = def.effects[id]
+		if amount and amount ~= 0 then
+			table.insert(parts, string.format("%s%d %s", if amount > 0 then "+" else "", amount, Config.Needs[id].label))
+		end
+	end
+	return table.concat(parts, "  ")
+end
+
+local function closeStation()
+	if stationPanel then
+		stationPanel:Destroy()
+		stationPanel = nil
+	end
+end
+
+function Menus.openStation(model: Model, stationId: string)
+	closeStation()
+	local cfg = Config.Stations[stationId]
+	if not cfg then
+		return
+	end
+	local rowHeight = 58
+	local panel = Theme.panel({
+		Name = "StationMenu",
+		Size = UDim2.fromOffset(400, 64 + rowHeight * #cfg.actions + 50),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Parent = gui,
+	})
+	stationPanel = panel
+	Theme.label({
+		Text = model:GetAttribute("DisplayName") or cfg.title,
+		Font = Theme.fontTitle,
+		TextSize = 22,
+		TextColor3 = Theme.yellow,
+		Size = UDim2.new(1, -24, 0, 28),
+		Position = UDim2.fromOffset(12, 10),
+		Parent = panel,
+	})
+	Theme.label({
+		Text = "Ano ang gagawin mo?",
+		TextSize = 14,
+		TextColor3 = Theme.textDim,
+		Size = UDim2.new(1, -24, 0, 18),
+		Position = UDim2.fromOffset(12, 38),
+		Parent = panel,
+	})
+
+	local pesos = player:GetAttribute("Pesos") or 0
+	for i, actionId in cfg.actions do
+		local def = Config.Actions[actionId]
+		local price = ""
+		if def.cost and def.cost > 0 then
+			price = "  ·  " .. Util.formatPesos(def.cost)
+		elseif def.pay then
+			price = "  ·  Sweldo ~" .. Util.formatPesos(def.pay)
+		end
+		local hours = if def.hours
+			then string.format("  ·  %s–%s", Util.formatHour(def.hours[1]), Util.formatHour(def.hours[2]))
+			else ""
+		local affordable = (def.cost or 0) <= pesos
+		local button = Theme.button({
+			Text = "",
+			Size = UDim2.new(1, -24, 0, rowHeight - 8),
+			Position = UDim2.fromOffset(12, 64 + (i - 1) * rowHeight),
+			BackgroundColor3 = if affordable then Theme.bgLight else Color3.fromRGB(70, 40, 40),
+			Parent = panel,
+		})
+		Theme.label({
+			Text = def.bubble .. "  " .. def.label .. price .. hours,
+			Font = Theme.fontBold,
+			TextSize = 15,
+			Size = UDim2.new(1, -20, 0, 22),
+			Position = UDim2.fromOffset(10, 4),
+			Parent = button,
+		})
+		Theme.label({
+			Text = effectSummary(def),
+			TextSize = 12,
+			TextColor3 = Theme.textDim,
+			Size = UDim2.new(1, -20, 0, 18),
+			Position = UDim2.fromOffset(10, 26),
+			Parent = button,
+		})
+		button.Activated:Connect(function()
+			Remotes.RequestAction:FireServer(model, actionId)
+			closeStation()
+		end)
+	end
+
+	local close = Theme.button({
+		Text = "Isara",
+		Size = UDim2.fromOffset(120, 36),
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -10),
+		Parent = panel,
+	})
+	close.Activated:Connect(closeStation)
+
+	-- close automatically if the player walks away
+	task.spawn(function()
+		while stationPanel == panel do
+			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if not root or not model.Parent or (root.Position - model:GetPivot().Position).Magnitude > 22 then
+				closeStation()
+				break
+			end
+			task.wait(0.3)
+		end
+	end)
+end
+
+--------------------------------------------------------------------------
+-- Side panels
+--------------------------------------------------------------------------
+local function closeSide()
+	if sidePanel then
+		sidePanel:Destroy()
+		sidePanel = nil
+		sidePanelKind = nil
+	end
+end
+
+local function sideFrame(title: string, rows: number): (Frame, Frame)
+	local panel = Theme.panel({
+		Name = "SidePanel",
+		Size = UDim2.fromOffset(320, 60 + rows * 48),
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -110, 0.5, 0),
+		Parent = gui,
+	})
+	Theme.label({
+		Text = title,
+		Font = Theme.fontTitle,
+		TextSize = 20,
+		TextColor3 = Theme.yellow,
+		Size = UDim2.new(1, -24, 0, 26),
+		Position = UDim2.fromOffset(12, 10),
+		Parent = panel,
+	})
+	local list = create("Frame", {
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, -24, 1, -50),
+		Position = UDim2.fromOffset(12, 44),
+		Parent = panel,
+	}, { create("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }) })
+	return panel, list
+end
+
+local function meterRow(list: Frame, order: number, left: string, right: string, fraction: number, color: Color3)
+	local row = create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 42), LayoutOrder = order, Parent = list })
+	Theme.label({ Text = left, Font = Theme.fontBold, TextSize = 15, Size = UDim2.new(0.65, 0, 0, 20), Parent = row })
+	Theme.label({
+		Text = right,
+		TextSize = 13,
+		TextColor3 = Theme.textDim,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		Size = UDim2.new(0.35, 0, 0, 20),
+		Position = UDim2.fromScale(0.65, 0),
+		Parent = row,
+	})
+	local bar = create("Frame", {
+		BackgroundColor3 = Color3.fromRGB(20, 16, 14),
+		BorderSizePixel = 0,
+		Size = UDim2.new(1, 0, 0, 10),
+		Position = UDim2.fromOffset(0, 26),
+		Parent = row,
+	}, { Theme.corner(5) })
+	create("Frame", {
+		BackgroundColor3 = color,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(math.clamp(fraction, 0, 1), 1),
+		Parent = bar,
+	}, { Theme.corner(5) })
+end
+
+local function renderSkills()
+	local panel, list = sideFrame("📊 Kasanayan", #Config.SkillOrder)
+	for i, id in Config.SkillOrder do
+		local info = Config.Skills[id]
+		local xp = player:GetAttribute("Skill_" .. id) or 0
+		local level = Config.skillLevel(xp)
+		local progress = if level >= Config.MaxSkillLevel then 1 else (xp % Config.XpPerLevel) / Config.XpPerLevel
+		meterRow(list, i, info.icon .. " " .. info.label, "Level " .. level, progress, Theme.yellow)
+	end
+	return panel
+end
+
+local function renderRelationships()
+	local panel, list = sideFrame("❤️ Relasyon", #Config.NPCs)
+	for i, npc in Config.NPCs do
+		local value = player:GetAttribute("Rel_" .. npc.id) or 0
+		meterRow(list, i, npc.name, Config.relationshipLabel(value), value / 100, Color3.fromRGB(240, 100, 140))
+	end
+	return panel
+end
+
+function Menus.toggle(kind: string)
+	if sidePanelKind == kind then
+		closeSide()
+		return
+	end
+	closeSide()
+	sidePanelKind = kind
+	sidePanel = if kind == "skills" then renderSkills() else renderRelationships()
+end
+
+function Menus.init(screenGui: ScreenGui)
+	gui = screenGui
+	Remotes.OpenMenu.OnClientEvent:Connect(function(model, stationId)
+		if typeof(model) == "Instance" and model:IsA("Model") then
+			Menus.openStation(model, stationId)
+		end
+	end)
+	-- keep an open side panel live
+	player.AttributeChanged:Connect(function(name)
+		if sidePanelKind and (name:sub(1, 6) == "Skill_" or name:sub(1, 4) == "Rel_") then
+			local kind = sidePanelKind
+			closeSide()
+			Menus.toggle(kind)
+		end
+	end)
+end
+
+function Menus.closeAll()
+	closeStation()
+	closeSide()
+end
+
+return Menus
+]]></ProtectedString></Properties></Item>
+<Item class="ModuleScript" referent="RBX25"><Properties><string name="Name">Theme</string><ProtectedString name="Source"><![CDATA[--[[
+	Theme — colours, fonts and a tiny `create` helper for building UI in code.
+	Palette borrows from the Philippine flag (blue, red, sun-yellow) over warm wood tones.
+]]
+
+local C = Color3.fromRGB
+
+local Theme = {
+	bg = C(38, 30, 26),
+	bgLight = C(62, 50, 42),
+	panelTransparency = 0.12,
+	text = C(250, 245, 235),
+	textDim = C(200, 188, 170),
+	yellow = C(252, 209, 22),
+	red = C(206, 17, 38),
+	blue = C(0, 56, 168),
+	green = C(70, 190, 110),
+	font = Enum.Font.GothamMedium,
+	fontBold = Enum.Font.GothamBold,
+	fontTitle = Enum.Font.FredokaOne,
+	toast = {
+		info = C(0, 56, 168),
+		good = C(40, 150, 80),
+		warn = C(210, 140, 20),
+		bad = C(190, 30, 45),
+	},
+}
+
+function Theme.create(className: string, props: { [string]: any }?, children: { Instance }?): any
+	local inst = Instance.new(className)
+	if props then
+		for key, value in props do
+			if key ~= "Parent" then
+				(inst :: any)[key] = value
+			end
+		end
+	end
+	if children then
+		for _, child in children do
+			child.Parent = inst
+		end
+	end
+	if props and props.Parent then
+		inst.Parent = props.Parent
+	end
+	return inst
+end
+
+function Theme.corner(radius: number?): UICorner
+	return Theme.create("UICorner", { CornerRadius = UDim.new(0, radius or 10) })
+end
+
+function Theme.stroke(color: Color3?, thickness: number?): UIStroke
+	return Theme.create("UIStroke", {
+		Color = color or Theme.yellow,
+		Thickness = thickness or 1.5,
+		Transparency = 0.35,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+	})
+end
+
+function Theme.padding(px: number): UIPadding
+	local u = UDim.new(0, px)
+	return Theme.create("UIPadding", { PaddingTop = u, PaddingBottom = u, PaddingLeft = u, PaddingRight = u })
+end
+
+-- Standard dark rounded panel.
+function Theme.panel(props: { [string]: any }): Frame
+	props.BackgroundColor3 = props.BackgroundColor3 or Theme.bg
+	props.BackgroundTransparency = props.BackgroundTransparency or Theme.panelTransparency
+	props.BorderSizePixel = 0
+	local frame = Theme.create("Frame", props)
+	Theme.corner(12).Parent = frame
+	Theme.stroke().Parent = frame
+	return frame
+end
+
+function Theme.label(props: { [string]: any }): TextLabel
+	props.BackgroundTransparency = props.BackgroundTransparency or 1
+	props.TextColor3 = props.TextColor3 or Theme.text
+	props.Font = props.Font or Theme.font
+	props.TextSize = props.TextSize or 16
+	props.TextXAlignment = props.TextXAlignment or Enum.TextXAlignment.Left
+	return Theme.create("TextLabel", props)
+end
+
+function Theme.button(props: { [string]: any }): TextButton
+	props.BackgroundColor3 = props.BackgroundColor3 or Theme.bgLight
+	props.TextColor3 = props.TextColor3 or Theme.text
+	props.Font = props.Font or Theme.fontBold
+	props.TextSize = props.TextSize or 16
+	props.AutoButtonColor = true
+	props.BorderSizePixel = 0
+	local button = Theme.create("TextButton", props)
+	Theme.corner(10).Parent = button
+	return button
+end
+
+return Theme
+]]></ProtectedString></Properties></Item>
+</Item>
+</Item>
+</Item>
+</Item>
+</roblox>

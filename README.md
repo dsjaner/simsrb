@@ -46,6 +46,10 @@ Public places: sari-sari store (pandesal, turon, balut, kakanin, palamig), karin
 
 ## Setup
 
+### Easiest — open the ready-made place file
+Open `release/BahayBuhay.rbxlx` in Roblox Studio (File → Open from File), then press **Play**.
+If you change the code, rebuild it with `python3 tools/build_place.py`.
+
 ### Option A — Rojo (recommended)
 1. Install [Rojo](https://rojo.space/) (CLI 7.x) and the Rojo plugin in Roblox Studio.
 2. In this folder, run:
