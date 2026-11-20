@@ -30,7 +30,7 @@ local function register(model: Instance)
 	end
 	local stationId = model:GetAttribute("StationId")
 	local cfg = stationId and Config.Stations[stationId]
-	if not cfg or #cfg.actions == 0 then
+	if not cfg or (#cfg.actions == 0 and not cfg.special) then
 		return
 	end
 	local parent = promptParent(model)
@@ -50,7 +50,9 @@ local function register(model: Instance)
 	prompt.Parent = parent
 
 	prompt.Triggered:Connect(function(player)
-		if #cfg.actions == 1 then
+		if cfg.special == "Career" then
+			Remotes.OpenCareer:FireClient(player)
+		elseif #cfg.actions == 1 then
 			ActionService.start(player, model, cfg.actions[1])
 		else
 			Remotes.OpenMenu:FireClient(player, model, stationId)

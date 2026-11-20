@@ -15,6 +15,7 @@
 
 local CollectionService = game:GetService("CollectionService")
 
+local Config = require(script.Parent.Config)
 local Util = require(script.Parent.Util)
 
 local Models = {}
@@ -945,8 +946,8 @@ function Builders.Shed(text: string?)
 	return m
 end
 
-function Builders.Building(width: number, depth: number, height: number, color: Color3, text: string?)
-	local m = newModel("Gusali")
+function Builders.Building(width: number, depth: number, height: number, color: Color3, text: string?, stationId: string?)
+	local m = newModel("Gusali", stationId)
 	P(m, { Size = V(width, height, depth), CFrame = CF(0, height / 2, 0), Color = color, Material = MAT.Concrete })
 	P(m, { Size = V(width + 1, 0.6, depth + 1), CFrame = CF(0, height + 0.3, 0), Color = C(120, 110, 100), Material = MAT.Concrete })
 	P(m, { Size = V(4, 7, 0.3), CFrame = CF(0, 3.5, depth / 2 + 0.1), Color = C(70, 50, 35), Material = MAT.WoodPlanks })
@@ -956,6 +957,10 @@ function Builders.Building(width: number, depth: number, height: number, color: 
 	if text then
 		local sign = P(m, { Size = V(width * 0.7, 2, 0.3), CFrame = CF(0, height - 1.6, depth / 2 + 0.2), Color = Palette.white })
 		Util.surfaceText(sign, Enum.NormalId.Back, text, Palette.flagBlue)
+	end
+	if stationId then
+		usePoint(m, CFrame.lookAt(V(0, 0, depth / 2 + 2.5), V(0, 0, 0)))
+		promptPart(m, CF(0, 3, depth / 2 + 1.5))
 	end
 	return m
 end
@@ -978,81 +983,116 @@ function Builders.Bantayog()
 	return m
 end
 
--- The player's house. Floor top is at y = 4 (local).
-function Builders.BahayKubo()
-	local m = newModel("BahayKubo")
-	local W, D, FH, WH = 30, 24, 4, 9
-	-- haligi (stilts) — the open space underneath is the "silong"
-	for _, x in { -W / 2 + 1, 0, W / 2 - 1 } do
-		for _, z in { -D / 2 + 1, 0, D / 2 - 1 } do
-			vcyl(m, x, 0, z, FH, 1.2, Palette.bambooDark)
+-- The player's house. style = "Kubo" (bamboo on stilts) or "Bungalow" (concrete, Metro style).
+-- Both share the same footprint so saved furniture fits either one.
+function Builders.House(style: string?)
+	style = style or "Kubo"
+	local isKubo = style == "Kubo"
+	local m = newModel(if isKubo then "BahayKubo" else "Bungalow")
+	local W, D = 30, 24
+	local FH = Config.HouseTypes[style].floorY
+	local WH = 9
+	local wallColor = if isKubo then Palette.sawali else C(236, 226, 200)
+	local wallMat = if isKubo then MAT.Fabric else MAT.Concrete
+
+	if isKubo then
+		-- haligi (stilts) — the open space underneath is the "silong"
+		for _, x in { -W / 2 + 1, 0, W / 2 - 1 } do
+			for _, z in { -D / 2 + 1, 0, D / 2 - 1 } do
+				vcyl(m, x, 0, z, FH, 1.2, Palette.bambooDark)
+			end
 		end
+		P(m, { Name = "Sahig", Size = V(W, 0.6, D), CFrame = CF(0, FH - 0.3, 0), Color = Palette.bamboo, Material = MAT.WoodPlanks })
+	else
+		P(m, { Name = "Sahig", Size = V(W, FH, D), CFrame = CF(0, FH / 2, 0), Color = C(200, 190, 175), Material = MAT.Concrete })
+		P(m, { Size = V(W - 1, 0.05, D - 1), CFrame = CF(0, FH + 0.02, 0), Color = C(190, 150, 110), Material = MAT.Marble })
 	end
-	P(m, { Name = "Sahig", Size = V(W, 0.6, D), CFrame = CF(0, FH - 0.3, 0), Color = Palette.bamboo, Material = MAT.WoodPlanks })
-	-- sawali walls with door and windows
-	local wc, wm = Palette.sawali, MAT.Fabric
-	wall(m, CF(0, FH, D / 2 - 0.25), W, WH, 0.5, {
-		{ c = 0, w = 5, bottom = 0, top = 7 },
-		{ c = -9, w = 5, bottom = 3, top = 6.5 },
-		{ c = 9, w = 5, bottom = 3, top = 6.5 },
-	}, wc, wm)
+
+	local front = { { c = 0, w = 5, bottom = 0, top = 7 }, { c = -9, w = 5, bottom = 3, top = 6.5 }, { c = 9, w = 5, bottom = 3, top = 6.5 } }
+	wall(m, CF(0, FH, D / 2 - 0.25), W, WH, 0.5, front, wallColor, wallMat)
 	wall(m, CF(0, FH, -D / 2 + 0.25), W, WH, 0.5, {
 		{ c = -6, w = 5, bottom = 3, top = 6.5 },
 		{ c = 6, w = 5, bottom = 3, top = 6.5 },
-	}, wc, wm)
+	}, wallColor, wallMat)
 	for _, sx in { 1, -1 } do
 		wall(m, CF(sx * (W / 2 - 0.25), FH, 0) * ANG(0, PI / 2, 0), D - 1, WH, 0.5, {
 			{ c = 0, w = 5, bottom = 3, top = 6.5 },
-		}, wc, wm)
+		}, wallColor, wallMat)
 	end
-	-- corner posts & beams
-	for _, sx in { -1, 1 } do
-		for _, sz in { -1, 1 } do
-			vcyl(m, sx * (W / 2 - 0.3), FH, sz * (D / 2 - 0.3), WH, 0.8, Palette.bambooDark)
+
+	if isKubo then
+		for _, sx in { -1, 1 } do
+			for _, sz in { -1, 1 } do
+				vcyl(m, sx * (W / 2 - 0.3), FH, sz * (D / 2 - 0.3), WH, 0.8, Palette.bambooDark)
+			end
 		end
-	end
-	-- propped-open window shutters (tukod)
-	for _, x in { -9, 9 } do
-		P(m, { Size = V(5.4, 0.2, 2.6), CFrame = CF(x, FH + 6.8, D / 2 + 1.0) * ANG(0.45, 0, 0), Color = Palette.nipa, Material = MAT.Grass })
-	end
-	gableRoof(m, CF(0, FH + WH, 0), W, D, 8, 2, Palette.nipa, MAT.Grass, true)
-	-- hagdan (front stairs) with railing
-	for i = 1, 3 do
-		local top = FH - i
-		P(m, { Size = V(5, top, 1.2), CFrame = CF(0, top / 2, D / 2 + (i - 0.5) * 1.2), Color = Palette.bamboo, Material = MAT.WoodPlanks })
-	end
-	for _, sx in { -1, 1 } do
-		vcyl(m, sx * 2.6, 0, D / 2 + 3.6, 3.5, 0.3, Palette.bambooDark)
-		P(m, {
-			Size = V(0.25, 0.25, 4.2),
-			CFrame = CF(sx * 2.6, 4.6, D / 2 + 1.8) * ANG(-0.6, 0, 0),
-			Color = Palette.bambooDark,
-			Material = MAT.Wood,
-		})
+		-- propped-open window shutters (tukod)
+		for _, x in { -9, 9 } do
+			P(m, { Size = V(5.4, 0.2, 2.6), CFrame = CF(x, FH + 6.8, D / 2 + 1.0) * ANG(0.45, 0, 0), Color = Palette.nipa, Material = MAT.Grass })
+		end
+		gableRoof(m, CF(0, FH + WH, 0), W, D, 8, 2, Palette.nipa, MAT.Grass, true)
+		-- hagdan (front stairs) with railing
+		for i = 1, 3 do
+			local top = FH - i
+			P(m, { Size = V(5, top, 1.2), CFrame = CF(0, top / 2, D / 2 + (i - 0.5) * 1.2), Color = Palette.bamboo, Material = MAT.WoodPlanks })
+		end
+		for _, sx in { -1, 1 } do
+			vcyl(m, sx * 2.6, 0, D / 2 + 3.6, 3.5, 0.3, Palette.bambooDark)
+			P(m, {
+				Size = V(0.25, 0.25, 4.2),
+				CFrame = CF(sx * 2.6, 4.6, D / 2 + 1.8) * ANG(-0.6, 0, 0),
+				Color = Palette.bambooDark,
+				Material = MAT.Wood,
+			})
+		end
+	else
+		-- painted lower band, window grills, red GI roof, front porch
+		for _, spec in { { V(W + 0.1, 1.2, 0.1), CF(0, FH + 0.6, D / 2) }, { V(W + 0.1, 1.2, 0.1), CF(0, FH + 0.6, -D / 2) } } do
+			P(m, { Size = spec[1], CFrame = spec[2], Color = C(90, 140, 160), Material = MAT.Concrete })
+		end
+		for _, x in { -9, 9 } do
+			for i = 0, 4 do
+				P(m, { Size = V(0.12, 3.5, 0.12), CFrame = CF(x - 2 + i, FH + 4.75, D / 2 + 0.1), Color = C(40, 40, 40), Material = MAT.Metal })
+			end
+		end
+		gableRoof(m, CF(0, FH + WH, 0), W, D, 4, 1.5, C(170, 60, 50), MAT.CorrodedMetal, true)
+		P(m, { Size = V(10, FH, 3), CFrame = CF(0, FH / 2, D / 2 + 1.5), Color = C(200, 190, 175), Material = MAT.Concrete })
+		P(m, { ClassName = "WedgePart", Size = V(10, 0.6, 1.5), CFrame = CF(0, FH / 2, D / 2 + 3.75) * ANG(0, PI, 0), Color = C(200, 190, 175), Material = MAT.Concrete })
 	end
 	return m
 end
 
--- A whole residential lot: plot, bamboo fence (bakod), sign, bahay kubo, tree.
-function Builders.Lot()
+function Builders.BahayKubo()
+	return Builders.House("Kubo")
+end
+
+-- A whole residential lot: plot, fence (bakod), sign, house, tree.
+function Builders.Lot(style: string?)
+	style = style or "Kubo"
+	local isKubo = style == "Kubo"
 	local m = newModel("Lot")
 	local half = 28
 	P(m, { Name = "Plot", Size = V(half * 2, 0.2, half * 2), CFrame = CF(0, -0.1, 0), Color = C(112, 168, 76), Material = MAT.Grass })
-	-- fence
+	local railColor = if isKubo then Palette.bamboo else C(220, 215, 205)
+	local postColor = if isKubo then Palette.bambooDark else C(200, 195, 185)
 	local function rail(fromV: Vector3, toV: Vector3)
 		local mid = (fromV + toV) / 2
 		for _, y in { 1.1, 2.4 } do
 			P(m, {
 				Size = V(0.25, 0.25, (toV - fromV).Magnitude),
 				CFrame = CFrame.lookAt(mid + V(0, y, 0), toV + V(0, y, 0)),
-				Color = Palette.bamboo,
-				Material = MAT.Wood,
+				Color = railColor,
+				Material = if isKubo then MAT.Wood else MAT.Concrete,
 			})
 		end
 		local steps = math.floor((toV - fromV).Magnitude / 4)
 		for i = 0, steps do
 			local p = fromV:Lerp(toV, i / math.max(steps, 1))
-			vcyl(m, p.X, 0, p.Z, 3, 0.4, Palette.bambooDark)
+			if isKubo then
+				vcyl(m, p.X, 0, p.Z, 3, 0.4, postColor)
+			else
+				P(m, { Size = V(0.6, 3, 0.6), CFrame = CF(p.X, 1.5, p.Z), Color = postColor, Material = MAT.Concrete })
+			end
 		end
 	end
 	rail(V(-half, 0, -half), V(half, 0, -half))
@@ -1060,23 +1100,225 @@ function Builders.Lot()
 	rail(V(half, 0, -half), V(half, 0, half))
 	rail(V(-half, 0, half), V(-5, 0, half))
 	rail(V(5, 0, half), V(half, 0, half))
-	-- house
-	local kubo = Builders.BahayKubo()
-	kubo:PivotTo(CF(0, 0, -8))
-	kubo.Parent = m
-	-- path from gate to stairs
-	P(m, { Size = V(4, 0.1, 12), CFrame = CF(0, 0.05, 22), Color = C(150, 120, 85), Material = MAT.Ground })
-	-- sign
+	local house = Builders.House(style)
+	house:PivotTo(CF(0, 0, -8))
+	house.Parent = m
+	P(m, { Size = V(4, 0.1, 12), CFrame = CF(0, 0.05, 22), Color = if isKubo then C(150, 120, 85) else C(170, 168, 160), Material = if isKubo then MAT.Ground else MAT.Concrete })
 	vcyl(m, 18, 0, 26, 5, 0.35, Palette.woodDark)
 	local board = P(m, { Name = "Sign", Size = V(8, 2.5, 0.3), CFrame = CF(18, 4.6, 26.2) * ANG(0, PI, 0), Color = Palette.wood, Material = MAT.WoodPlanks })
 	Util.surfaceText(board, Enum.NormalId.Front, "Bakanteng Lote", C(255, 240, 200))
-	-- trees
 	local tree = Builders.CoconutTree(math.random(1, 1000))
 	tree:PivotTo(CF(-23, 0, 22))
 	tree.Parent = m
-	local tree2 = Builders.CoconutTree(math.random(1, 1000))
-	tree2:PivotTo(CF(23, 0, -23))
-	tree2.Parent = m
+	if isKubo then
+		local tree2 = Builders.CoconutTree(math.random(1, 1000))
+		tree2:PivotTo(CF(23, 0, -23))
+		tree2.Parent = m
+	end
+	return m
+end
+
+--------------------------------------------------------------------------
+-- PHASE 0 ADDITIONS: travel, work places, metro & farm scenery
+--------------------------------------------------------------------------
+
+-- Provincial bus. Front is -Z (it drives "forward" along its LookVector). Seats are named "BusSeat".
+function Builders.Bus(color: Color3?, signText: string?)
+	local m = newModel("Bus")
+	local body = color or C(210, 55, 50)
+	local W, L = 7, 24
+	local glass = C(150, 190, 210)
+	P(m, { Name = "Floor", Size = V(W, 0.5, L), CFrame = CF(0, 1.75, 0), Color = C(60, 60, 64), Material = MAT.DiamondPlate })
+	P(m, { Name = "Chassis", Size = V(W - 0.6, 1, L - 1), CFrame = CF(0, 1, 0), Color = C(40, 40, 44), Material = MAT.Metal })
+	-- left wall (solid lower, glass upper)
+	P(m, { Size = V(0.3, 2.4, L), CFrame = CF(-W / 2 + 0.15, 3.2, 0), Color = body, Material = MAT.Metal })
+	P(m, { Size = V(0.2, 2.4, L), CFrame = CF(-W / 2 + 0.15, 5.6, 0), Color = glass, Material = MAT.Glass, Transparency = 0.55 })
+	-- right wall with a door gap at the front
+	P(m, { Size = V(0.3, 2.4, L - 3), CFrame = CF(W / 2 - 0.15, 3.2, 1.5), Color = body, Material = MAT.Metal })
+	P(m, { Size = V(0.2, 2.4, L - 3), CFrame = CF(W / 2 - 0.15, 5.6, 1.5), Color = glass, Material = MAT.Glass, Transparency = 0.55 })
+	-- white stripe both sides
+	for _, sx in { -1, 1 } do
+		P(m, { Size = V(0.35, 0.4, L), CFrame = CF(sx * (W / 2 - 0.1), 4.25, 0), Color = Palette.white, Material = MAT.SmoothPlastic, CanCollide = false })
+	end
+	-- front and back
+	P(m, { Size = V(W, 2.4, 0.3), CFrame = CF(0, 3.2, -L / 2 + 0.15), Color = body, Material = MAT.Metal })
+	P(m, { Name = "Windshield", Size = V(W - 0.4, 2.6, 0.1), CFrame = CF(0, 5.6, -L / 2 + 0.1), Color = glass, Material = MAT.Glass, Transparency = 0.5 })
+	P(m, { Size = V(W, 5, 0.3), CFrame = CF(0, 4.4, L / 2 - 0.15), Color = body, Material = MAT.Metal })
+	P(m, { Name = "Roof", Size = V(W + 0.2, 0.4, L + 0.2), CFrame = CF(0, 7.1, 0), Color = Palette.white, Material = MAT.Metal })
+	local sign = P(m, { Name = "Ruta", Size = V(5.5, 1, 0.2), CFrame = CF(0, 6.4, -L / 2 + 0.05), Color = C(30, 30, 30), Material = MAT.SmoothPlastic, CanCollide = false })
+	local label = Util.surfaceText(sign, Enum.NormalId.Front, signText or "BIYAHE", C(255, 200, 60), Enum.Font.GothamBold)
+	label.Name = "RouteLabel"
+	for _, sx in { -1, 1 } do
+		P(m, { Shape = Enum.PartType.Cylinder, Size = V(0.15, 0.8, 0.8), CFrame = CF(sx * 2.5, 2.6, -L / 2 - 0.05) * ANG(0, PI / 2, 0), Color = C(255, 250, 220), Material = MAT.Neon })
+		for _, z in { -L / 2 + 4, L / 2 - 4 } do
+			P(m, { Shape = Enum.PartType.Cylinder, Size = V(1, 2.6, 2.6), CFrame = CF(sx * (W / 2 - 0.3), 1.3, z), Color = C(25, 25, 25), Material = MAT.SmoothPlastic })
+		end
+	end
+	-- driver (decor seat + steering wheel)
+	P(m, { Size = V(1.8, 0.3, 1.8), CFrame = CF(-2, 2.6, -L / 2 + 2.5), Color = C(30, 30, 30) })
+	P(m, { Shape = Enum.PartType.Cylinder, Size = V(0.15, 1.3, 1.3), CFrame = CF(-2, 4, -L / 2 + 1.4) * ANG(0, PI / 2, 0), Color = C(20, 20, 20) })
+	-- passenger seats: 7 rows × 2 sides, facing forward (-Z)
+	for row = 0, 6 do
+		local z = -L / 2 + 6 + row * 2.6
+		for _, x in { -2, 2 } do
+			P(m, { ClassName = "Seat", Name = "BusSeat", Size = V(2.4, 0.3, 1.6), CFrame = CF(x, 2.6, z), Color = C(40, 80, 150), Material = MAT.Fabric })
+			P(m, { Size = V(2.4, 1.8, 0.25), CFrame = CF(x, 3.5, z + 0.9), Color = C(40, 80, 150), Material = MAT.Fabric })
+		end
+	end
+	promptPart(m, CF(W / 2 + 0.8, 3, -L / 2 + 1.5))
+	return m
+end
+
+function Builders.BusTerminal(text: string?)
+	local m = newModel("Terminal")
+	P(m, { Size = V(18, 0.4, 7), CFrame = CF(0, 0.2, 0), Color = C(180, 178, 170), Material = MAT.Concrete })
+	for _, x in { -8, 8 } do
+		for _, z in { -3, 3 } do
+			vcyl(m, x, 0.4, z, 7.5, 0.4, Palette.metal, MAT.Metal)
+		end
+	end
+	P(m, { Size = V(19, 0.3, 8), CFrame = CF(0, 8, 0), Color = C(30, 90, 160), Material = MAT.CorrodedMetal })
+	bench(m, CF(-4, 0.4, -1.5), 6)
+	bench(m, CF(4, 0.4, -1.5), 6)
+	local sign = P(m, { Size = V(14, 1.6, 0.2), CFrame = CF(0, 6.9, 3.6), Color = Palette.flagYellow })
+	Util.surfaceText(sign, Enum.NormalId.Back, text or "TERMINAL", Palette.flagBlue)
+	return m
+end
+
+-- Rice paddy with dikes (pilapil), rice tufts and a little farm hut. Station: Palayan.
+function Builders.Palayan(seed: number?)
+	local m = newModel("Palayan", "Palayan")
+	local rng = Random.new(seed or 1)
+	P(m, { Name = "Tubig", Size = V(24, 0.3, 16), CFrame = CF(0, 0.05, 0), Color = C(110, 120, 70), Material = MAT.Mud })
+	for _, spec in { { V(25, 0.6, 1), CF(0, 0.3, 8) }, { V(25, 0.6, 1), CF(0, 0.3, -8) }, { V(1, 0.6, 16), CF(12, 0.3, 0) }, { V(1, 0.6, 16), CF(-12, 0.3, 0) } } do
+		P(m, { Size = spec[1], CFrame = spec[2], Color = C(120, 95, 60), Material = MAT.Ground })
+	end
+	for ix = 0, 9 do
+		for iz = 0, 5 do
+			P(m, {
+				Size = V(0.5, rng:NextNumber(0.9, 1.4), 0.5),
+				CFrame = CF(-10.5 + ix * 2.33, 0.7, -6 + iz * 2.4),
+				Color = Color3.fromHSV(rng:NextNumber(0.22, 0.28), 0.7, 0.75),
+				Material = MAT.Grass,
+				CanCollide = false,
+			})
+		end
+	end
+	-- kubo-kubo (rest hut)
+	for _, x in { 13.5, 18.5 } do
+		for _, z in { 5.5, 9.5 } do
+			vcyl(m, x, 0, z, 5, 0.4, Palette.bambooDark)
+		end
+	end
+	P(m, { Size = V(6, 0.3, 5), CFrame = CF(16, 1.6, 7.5), Color = Palette.bamboo, Material = MAT.WoodPlanks })
+	gableRoof(m, CF(16, 5, 7.5), 6, 5, 2, 0.6, Palette.nipa, MAT.Grass, false)
+	usePoint(m, CFrame.lookAt(V(0, 0.6, 9.5), V(0, 0.6, 0)))
+	promptPart(m, CF(0, 2, 8.5))
+	return m
+end
+
+function Builders.Kalabaw()
+	local m = newModel("Kalabaw")
+	local gray = C(70, 70, 75)
+	P(m, { Size = V(2.4, 2.2, 5), CFrame = CF(0, 2.6, 0), Color = gray })
+	P(m, { Size = V(1.6, 1.5, 1.8), CFrame = CF(0, 3, -3.1), Color = gray })
+	P(m, { Size = V(1.2, 0.8, 0.6), CFrame = CF(0, 2.6, -4.1), Color = C(55, 55, 60) })
+	for _, sx in { -1, 1 } do
+		P(m, { Size = V(1.6, 0.3, 0.3), CFrame = CF(sx * 1.4, 4, -3.2) * ANG(0, 0, sx * -0.5), Color = C(220, 210, 190) })
+		for _, z in { -1.8, 1.8 } do
+			P(m, { Size = V(0.6, 1.6, 0.6), CFrame = CF(sx * 0.8, 0.8, z), Color = gray })
+		end
+	end
+	P(m, { Size = V(0.2, 1.4, 0.2), CFrame = CF(0, 2.6, 2.6) * ANG(0.4, 0, 0), Color = gray })
+	return m
+end
+
+function Builders.ConstructionSite()
+	local m = newModel("Construction", "Construction")
+	local block = C(150, 150, 145)
+	P(m, { Size = V(16, 0.3, 12), CFrame = CF(0, 0.15, 0), Color = C(150, 130, 100), Material = MAT.Ground })
+	for i = 0, 5 do
+		P(m, { Size = V(14, 1, 0.8), CFrame = CF(0, 0.8 + i, -4), Color = if i % 2 == 0 then block else C(160, 160, 155), Material = MAT.Concrete })
+	end
+	P(m, { Size = V(0.8, 6, 7), CFrame = CF(-7, 3.3, -0.5), Color = block, Material = MAT.Concrete })
+	-- bamboo scaffolding
+	for _, x in { -6, -2, 2, 6 } do
+		vcyl(m, x, 0.3, -2.5, 10, 0.25, Palette.bambooDark)
+	end
+	for _, y in { 3, 6, 9 } do
+		P(m, { Shape = Enum.PartType.Cylinder, Size = V(13, 0.25, 0.25), CFrame = CF(0, y, -2.5), Color = Palette.bamboo, Material = MAT.Wood })
+	end
+	-- cement mixer and sand pile
+	P(m, { Shape = Enum.PartType.Cylinder, Size = V(2.4, 2, 2), CFrame = CF(4, 2, 2.5) * ANG(0, 0, 0.5), Color = C(240, 130, 30), Material = MAT.Metal })
+	P(m, { Size = V(1.6, 1, 1.6), CFrame = CF(4, 0.8, 2.5), Color = C(60, 60, 60), Material = MAT.Metal })
+	P(m, { ClassName = "WedgePart", Size = V(3, 1.5, 2), CFrame = CF(-3, 1.05, 3), Color = C(210, 180, 120), Material = MAT.Sand })
+	P(m, { ClassName = "WedgePart", Size = V(3, 1.5, 2), CFrame = CF(-3, 1.05, 5) * ANG(0, PI, 0), Color = C(210, 180, 120), Material = MAT.Sand })
+	local sign = P(m, { Size = V(6, 2, 0.2), CFrame = CF(5, 3, 6), Color = Palette.flagYellow })
+	Util.surfaceText(sign, Enum.NormalId.Back, "MAY GINAGAWA · SAFETY FIRST", C(40, 40, 40))
+	vcyl(m, 5, 0, 5.8, 2, 0.2, Palette.metal, MAT.Metal)
+	usePoint(m, CFrame.lookAt(V(0, 0.3, 0), V(0, 0.3, -4)))
+	promptPart(m, CF(0, 2, 2))
+	return m
+end
+
+-- Office tower for the metro skyline. Optional stationId/sign makes it a workplace.
+function Builders.Tower(width: number, depth: number, floors: number, color: Color3, stationId: string?, signText: string?)
+	local m = newModel("Tower", stationId)
+	local floorH = 4
+	local height = floors * floorH
+	P(m, { Name = "Body", Size = V(width, height, depth), CFrame = CF(0, height / 2, 0), Color = color, Material = MAT.Concrete })
+	for f = 1, floors - 1 do
+		P(m, {
+			Size = V(width + 0.1, 1.8, depth + 0.1),
+			CFrame = CF(0, f * floorH + 0.4, 0),
+			Color = C(120, 170, 210),
+			Material = MAT.Glass,
+			Reflectance = 0.15,
+			CanCollide = false,
+		})
+	end
+	P(m, { Size = V(width * 0.4, 3, depth * 0.4), CFrame = CF(0, height + 1.5, 0), Color = C(170, 170, 170), Material = MAT.Concrete })
+	vcyl(m, width * 0.25, height, depth * 0.25, 3, 2, C(80, 80, 85), MAT.Metal) -- water tank
+	P(m, { Size = V(6, 3.2, 0.2), CFrame = CF(0, 1.6, depth / 2 + 0.05), Color = C(40, 50, 60), Material = MAT.Glass })
+	if signText then
+		local sign = P(m, { Size = V(math.min(width - 2, 18), 2, 0.3), CFrame = CF(0, height - 2, depth / 2 + 0.2), Color = Palette.white })
+		Util.surfaceText(sign, Enum.NormalId.Back, signText, Palette.flagBlue)
+	end
+	if stationId then
+		usePoint(m, CFrame.lookAt(V(0, 0, depth / 2 + 2.5), V(0, 0, 0)))
+		promptPart(m, CF(0, 3, depth / 2 + 1.5))
+	end
+	return m
+end
+
+-- Pier and a passenger/cargo ship. Station: Pantalan (Seaman job).
+function Builders.Pantalan()
+	local m = newModel("Pantalan", "Pantalan")
+	P(m, { Size = V(8, 0.8, 60), CFrame = CF(0, 1, -30), Color = Palette.wood, Material = MAT.WoodPlanks })
+	for z = -58, -4, 9 do
+		for _, x in { -3.5, 3.5 } do
+			vcyl(m, x, -6, z, 7.4, 0.8, Palette.woodDark)
+		end
+	end
+	local hull = C(240, 240, 240)
+	P(m, { Name = "Barko", Size = V(16, 8, 50), CFrame = CF(13, -1, -38), Color = hull, Material = MAT.Metal })
+	P(m, { Size = V(16.1, 2, 50.1), CFrame = CF(13, -4, -38), Color = Palette.flagBlue, Material = MAT.Metal })
+	P(m, { ClassName = "WedgePart", Size = V(16, 8, 10), CFrame = CF(13, -1, -68) * ANG(0, 0, PI), Color = hull, Material = MAT.Metal })
+	P(m, { Size = V(12, 6, 14), CFrame = CF(13, 6, -30), Color = hull, Material = MAT.Metal })
+	P(m, { Size = V(12.1, 1.4, 14.1), CFrame = CF(13, 7, -30), Color = C(40, 60, 80), Material = MAT.Glass })
+	vcyl(m, 13, 9, -22, 5, 3, Palette.flagRed, MAT.Metal)
+	usePoint(m, CFrame.lookAt(V(0, 1.4, -55), V(13, 1.4, -55)))
+	promptPart(m, CF(0, 3, -55))
+	return m
+end
+
+-- Distant hill scenery (ellipsoid). Non-collidable so players never snag on its box.
+function Builders.Bundok(size: Vector3, color: Color3?)
+	local m = newModel("Bundok")
+	local hill = P(m, { Size = size, CFrame = CF(0, size.Y * 0.3, 0), Color = color or C(70, 130, 60), Material = MAT.Grass, CanCollide = false, CanQuery = false })
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = hill
 	return m
 end
 

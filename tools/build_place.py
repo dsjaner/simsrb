@@ -46,7 +46,13 @@ def folder(path, name, cls="Folder"):
 
 def main():
     src = os.path.join(ROOT, "src")
-    body = item("ReplicatedStorage", "ReplicatedStorage", folder(os.path.join(src, "shared"), "Shared"))
+    # Workspace.StreamingEnabled can't be set from scripts, so it's set in the place file.
+    body = (
+        f'<Item class="Workspace" referent="RBX{next(ref)}"><Properties>'
+        '<string name="Name">Workspace</string><bool name="StreamingEnabled">true</bool>'
+        "</Properties></Item>\n"
+    )
+    body += item("ReplicatedStorage", "ReplicatedStorage", folder(os.path.join(src, "shared"), "Shared"))
     body += item("ServerScriptService", "ServerScriptService", folder(os.path.join(src, "server"), "Server"))
     body += item(
         "StarterPlayer",

@@ -130,7 +130,12 @@ local function update()
 		pending = nil
 		return
 	end
-	local origin = (lot:FindFirstChild("Origin") :: BasePart).CFrame
+	local originPart = lot:FindFirstChild("Origin") :: BasePart?
+	if not originPart then
+		pending = nil -- not streamed in yet
+		return
+	end
+	local origin = originPart.CFrame
 	local rel = origin:PointToObjectSpace(result.Position)
 	local x = math.floor(rel.X * 2 + 0.5) / 2
 	local z = math.floor(rel.Z * 2 + 0.5) / 2

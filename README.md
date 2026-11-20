@@ -8,6 +8,31 @@ Everything (world, buildings, furniture, UI) is made in code from parts, so you 
 
 ---
 
+## Phase 0 — Three cities, one shared world
+
+Everyone plays in the same map, with three cities connected by road (no teleports between cities):
+
+| City | Feel | Cost of living | Pay | Houses |
+|---|---|---|---|---|
+| 🌊 **Baybay Alon** | Coastal town: fishing, beach, pier | ×1.0 | ×1.0 | Bahay kubo |
+| 🏙️ **Metro Dakila** | Metro Manila-style city: BPO, hospital, university, mall | ×1.4 | ×1.35 | Concrete bungalow |
+| 🌾 **San Bukid** | Upland farming town on a plateau: rice paddies, kalabaw | ×0.85 | ×0.9 | Bahay kubo |
+
+- **Ikot ng Kapalaran.** The first time you join, a wheel decides your **hometown**, **Yaman** (wealth), **Swerte** (luck) and **DNA** (talent), each with 3 tiers. It also picks a natural talent skill and your parents' jobs. The odds are shown on screen. The server rolls it once and saves it, so rejoining doesn't re-roll it.
+  - **Yaman:** starting pesos and the daily *padala* from your parents. Mahirap players get slower Pakikisama decay ("matibay ang samahan").
+  - **Swerte:** the good/bad mix of trip events. Malas players get +10% skill XP ("natututo sa hirap").
+  - **DNA:** skill XP speed, plus +25% XP in your talent skill.
+- **Parents are never shown as characters.** They show up through 📱 text messages and story notifications.
+- **Only your age is visible to other players.** You can see the rest of your identity in the private 🪪 **Ako** panel.
+- **Aging:** 1 year for every 3 in-game days you play. Everyone starts at 18 for now; playable childhood comes in Phase 1.
+- **PESO Office:** one in every city. Pick from 10 professions: Mangingisda, Magsasaka, Tindero, Drayber, Karpintero, Guro, Nars, Call Center Agent, Seaman, Doktor. Education locks some of them; college and medicine unlock in Phase 1. Each job can only be done in certain cities, so you choose between commuting and moving.
+- **Provincial buses:**
+  - Routes: Baybay Alon ⇄ Metro Dakila (₱60, ~90s) and Metro Dakila ⇄ San Bukid (₱80, ~110s).
+  - Press **E** to board and **Space** to get off. The fare is paid when the bus leaves.
+  - **Trip events** happen along the way, weighted by Swerte: finding coins, Ninong Boy's pocket money, a lost wallet with a reward, a pickpocket, a flat tire, traffic, and more.
+- **Prices, pay and bills scale by city.**
+- **StreamingEnabled** is on (set in the place file and in `default.project.json`), so phones only load the area around the player.
+
 ## Features
 
 | System | What it does |

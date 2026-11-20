@@ -108,7 +108,10 @@ end
 --------------------------------------------------------------------------
 -- SKILLS (Kasanayan)
 --------------------------------------------------------------------------
-Config.SkillOrder = { "Pagluluto", "Pagkanta", "Basketball", "Pangingisda", "Pagmamaneho", "Pagtitinda" }
+Config.SkillOrder = {
+	"Pagluluto", "Pagkanta", "Basketball", "Pangingisda", "Pagmamaneho", "Pagtitinda",
+	"Pagsasaka", "Pagkakarpintero", "Komunikasyon",
+}
 Config.Skills = {
 	Pagluluto = { label = "Pagluluto", english = "Cooking", icon = "🍳" },
 	Pagkanta = { label = "Pagkanta", english = "Singing", icon = "🎤" },
@@ -116,6 +119,9 @@ Config.Skills = {
 	Pangingisda = { label = "Pangingisda", english = "Fishing", icon = "🎣" },
 	Pagmamaneho = { label = "Pagmamaneho", english = "Driving", icon = "🚌" },
 	Pagtitinda = { label = "Pagtitinda", english = "Selling", icon = "🧺" },
+	Pagsasaka = { label = "Pagsasaka", english = "Farming", icon = "🌾" },
+	Pagkakarpintero = { label = "Pagkakarpintero", english = "Construction", icon = "🔨" },
+	Komunikasyon = { label = "Komunikasyon", english = "Communication", icon = "🎧" },
 }
 Config.XpPerLevel = 25
 Config.MaxSkillLevel = 10
@@ -250,15 +256,43 @@ Config.Actions = {
 	-- Trabaho (jobs)
 	DriveJeep = { label = "Mamasada ng jeep", verb = "Namamasada", bubble = "🚌", duration = 30, job = true,
 		pay = 220, hours = { 5, 22 }, effects = { Energy = -18, Fun = -8, Hunger = -10, Hygiene = -8 },
-		skill = "Pagmamaneho", skillXp = 6, payBoost = true,
+		skill = "Pagmamaneho", skillXp = 6, payBoost = true, profession = "Drayber",
 		doneMessages = { "Bayad po! Ang daming pasahero ngayon.", "Para po! Tapos na ang biyahe mo." } },
 	Magtinda = { label = "Magtinda sa palengke", verb = "Nagtitinda", bubble = "🧺", duration = 25, job = true,
 		pay = 160, hours = { 4, 18 }, effects = { Energy = -12, Fun = -5, Hunger = -8, Social = 10 },
-		skill = "Pagtitinda", skillXp = 6, payBoost = true,
+		skill = "Pagtitinda", skillXp = 6, payBoost = true, profession = "Tindero",
 		doneMessages = { "Suki ka na ng mga mamimili!", "Ubos ang paninda mo ngayon!" } },
 	Mangisda = { label = "Mangisda sa bangka", verb = "Nangingisda", bubble = "🎣", duration = 28, job = true,
 		pay = 190, effects = { Energy = -15, Hygiene = -12, Hunger = -10, Fun = 5 },
-		skill = "Pangingisda", skillXp = 6, payBoost = true, doneHook = "Fishing" },
+		skill = "Pangingisda", skillXp = 6, payBoost = true, doneHook = "Fishing", profession = "Mangingisda" },
+	Magsaka = { label = "Magtanim at mag-ani sa palayan", verb = "Nagsasaka", bubble = "🌾", duration = 28, job = true,
+		pay = 170, hours = { 5, 18 }, effects = { Energy = -18, Hygiene = -14, Hunger = -10, Fun = -3 },
+		skill = "Pagsasaka", skillXp = 6, payBoost = true, profession = "Magsasaka",
+		doneMessages = { "Ang ganda ng ani ngayon!", "Nakapagtanim ka ng isang pitak ng palay." } },
+	Magkarpintero = { label = "Magtrabaho sa construction", verb = "Nagkakarpintero", bubble = "🔨", duration = 30, job = true,
+		pay = 230, hours = { 6, 18 }, effects = { Energy = -22, Hygiene = -15, Hunger = -12, Fun = -5 },
+		skill = "Pagkakarpintero", skillXp = 6, payBoost = true, profession = "Karpintero",
+		doneMessages = { "Tapos na ang pader na ginagawa n'yo!", "Sabi ni foreman: 'Ayos ang trabaho mo!'" } },
+	CallCenter = { label = "Mag-shift sa call center", verb = "Sumasagot ng tawag", bubble = "🎧", duration = 30, job = true,
+		pay = 320, hours = { 18, 6 }, effects = { Energy = -20, Fun = -12, Social = -5, Hunger = -8 },
+		skill = "Komunikasyon", skillXp = 6, payBoost = true, profession = "CallCenter",
+		doneMessages = { "Na-resolve mo ang 40 na tawag! \"Thank you for calling!\"", "Graveyard shift na naman... pero sulit ang sweldo." } },
+	Magturo = { label = "Magturo sa klase", verb = "Nagtuturo", bubble = "📚", duration = 28, job = true,
+		pay = 260, hours = { 7, 17 }, effects = { Energy = -15, Fun = -5, Social = 10, Hunger = -8 },
+		skill = "Komunikasyon", skillXp = 5, payBoost = true, profession = "Guro",
+		doneMessages = { "\"Good morning, Ma'am/Sir!\" Ang kukulit ng mga estudyante mo." } },
+	MagNars = { label = "Mag-duty bilang nars", verb = "Nagdu-duty", bubble = "🩺", duration = 30, job = true,
+		pay = 300, effects = { Energy = -20, Hygiene = -8, Hunger = -10, Social = 5 },
+		skill = "Komunikasyon", skillXp = 5, payBoost = true, profession = "Nars",
+		doneMessages = { "Salamat sa pag-aalaga, nars!" } },
+	Manggamot = { label = "Manggamot ng pasyente", verb = "Nanggagamot", bubble = "🥼", duration = 30, job = true,
+		pay = 600, effects = { Energy = -25, Fun = -8, Hunger = -12 },
+		skill = "Komunikasyon", skillXp = 5, payBoost = true, profession = "Doktor",
+		doneMessages = { "Naligtas mo ang isang pasyente. Proud si Mama!" } },
+	Maglayag = { label = "Sumampa sa barko", verb = "Naglalayag", bubble = "⚓", duration = 35, job = true,
+		pay = 500, effects = { Energy = -20, Social = -15, Fun = -10, Hunger = -10 },
+		skill = "Pangingisda", skillXp = 4, payBoost = true, profession = "Seaman",
+		doneMessages = { "Nakauwi ka galing sa biyahe sa dagat." } },
 
 	-- Kapitbahay (NPC)
 	Kwentuhan = { label = "Makipagkwentuhan", verb = "Nakikipagkwentuhan", bubble = "💬", duration = 10,
@@ -303,6 +337,14 @@ Config.Stations = {
 	Bangka = { title = "Bangka", prompt = "Mangisda", actions = { "Mangisda" } },
 	Simbahan = { title = "Simbahan", prompt = "Magsimba", actions = { "Magsimba" } },
 	Poso = { title = "Poso", prompt = "Maghilamos", actions = { "Maghilamos" } },
+	Palayan = { title = "Palayan", prompt = "Magsaka", actions = { "Magsaka" } },
+	Construction = { title = "Construction Site", prompt = "Magtrabaho", actions = { "Magkarpintero" } },
+	BPO = { title = "Call Center", prompt = "Mag-shift", actions = { "CallCenter" } },
+	Ospital = { title = "Ospital", prompt = "Mag-duty", actions = { "MagNars", "Manggamot" } },
+	RHU = { title = "Rural Health Unit", prompt = "Mag-duty", actions = { "MagNars" } },
+	Paaralan = { title = "Paaralan", prompt = "Magturo", actions = { "Magturo" } },
+	Pantalan = { title = "Pantalan", prompt = "Sumampa", actions = { "Maglayag" } },
+	PESO = { title = "PESO Office", prompt = "Maghanap ng trabaho", actions = {}, special = "Career" },
 
 	-- NPCs
 	NPC_Kapitbahay = { title = "Kapitbahay", prompt = "Kausapin", actions = { "Kwentuhan", "Chismis" } },
@@ -348,15 +390,27 @@ for _, item in Config.Furniture do
 	Config.FurnitureById[item.id] = item
 end
 
--- Starting furniture for a brand-new player, relative to their lot origin.
--- The bahay kubo floor is at y = 4; the yard is y = 0. r = rotation in degrees.
+-- Starting furniture for a brand-new player, relative to their lot origin. r = rotation in degrees.
+-- inHouse = true: y is measured from the house floor (kubo floor is 4 high, bungalow 0.6).
 Config.StarterFurniture = {
-	{ id = "Banig", x = -10, y = 4, z = -15.5, r = 0 },
-	{ id = "Kalan", x = 9, y = 4, z = -18, r = 0 },
-	{ id = "Paliguan", x = 11, y = 4, z = -1, r = 180 },
-	{ id = "Inidoro", x = 13, y = 4, z = -9, r = 270 },
+	{ id = "Banig", x = -10, y = 0, z = -15.5, r = 0, inHouse = true },
+	{ id = "Kalan", x = 9, y = 0, z = -18, r = 0, inHouse = true },
+	{ id = "Paliguan", x = 11, y = 0, z = -1, r = 180, inHouse = true },
+	{ id = "Inidoro", x = 13, y = 0, z = -9, r = 270, inHouse = true },
 	{ id = "Halaman", x = -9, y = 0, z = 12, r = 0 },
 }
+
+-- House types. Every house shares the same footprint (lot-local), so furniture fits in any of them.
+Config.HouseTypes = {
+	Kubo = { label = "Bahay Kubo", floorY = 4 },
+	Bungalow = { label = "Bungalow", floorY = 0.6 },
+}
+Config.HouseFootprint = { minX = -15, maxX = 15, minZ = -20, maxZ = 4 }
+
+function Config.insideHouse(x: number, z: number): boolean
+	local f = Config.HouseFootprint
+	return x >= f.minX and x <= f.maxX and z >= f.minZ and z <= f.maxZ
+end
 
 --------------------------------------------------------------------------
 -- NPCs (mga kapitbahay)
@@ -374,11 +428,189 @@ Config.NPCs = {
 	{ id = "KuyaJun", name = "Kuya Jun", station = "NPC_Kapitbahay", home = Vector3.new(100, 0.2, 16),
 		skin = C(150, 100, 68), shirt = C(240, 200, 60), pants = C(50, 50, 60), accessory = "Towel", walkSpeed = 8,
 		lines = { "Bayan! Bayan! Sakay na!", "Barya lang po sa umaga.", "Traffic na naman sa kanto." } },
+	{ id = "AteJoy", name = "Ate Joy", station = "NPC_Kapitbahay", home = Vector3.new(3030, 0.3, 26),
+		skin = C(200, 145, 110), shirt = C(60, 90, 160), pants = C(40, 40, 50), accessory = "Towel", walkSpeed = 9,
+		lines = { "Kakagaling ko lang sa night shift...", "Ang mahal ng upa dito sa Metro!", "Uuwi ako sa probinsya sa Pasko." } },
+	{ id = "TatayAmbo", name = "Tatay Ambo", station = "NPC_Lola", home = Vector3.new(5900, 40.3, -28),
+		skin = C(150, 98, 64), shirt = C(235, 235, 225), pants = C(70, 60, 50), accessory = "Salakot", walkSpeed = 5,
+		lines = { "Sana umulan na para sa palay.", "Ang mga anak ko, nasa Maynila na lahat.", "Masarap ang buhay sa bukid, apo." } },
 }
 
 Config.NPCById = {}
 for _, npc in Config.NPCs do
 	Config.NPCById[npc.id] = npc
 end
+
+--------------------------------------------------------------------------
+-- IDENTITY — "Ikot ng Kapalaran". Rolled once when a player first joins.
+-- Three privilege metrics, each with 3 tiers (1 = low, 2 = middle, 3 = high).
+-- None of these are shown to other players. Only AGE is public.
+--------------------------------------------------------------------------
+Config.StartAge = 18 -- Phase 0. Playable childhood (start at 7) arrives in Phase 1.
+Config.DaysPerYear = 3 -- in-game days (while you're online) per year of age
+
+Config.MetricOrder = { "Yaman", "Swerte", "DNA" }
+Config.Metrics = {
+	Yaman = {
+		label = "Yaman", english = "Wealth", icon = "💰",
+		tiers = { { label = "Mahirap", weight = 30 }, { label = "Katamtaman", weight = 45 }, { label = "Maykaya", weight = 25 } },
+	},
+	Swerte = {
+		label = "Swerte", english = "Luck", icon = "🍀",
+		tiers = { { label = "Malas", weight = 30 }, { label = "Karaniwan", weight = 45 }, { label = "Swerte", weight = 25 } },
+	},
+	DNA = {
+		label = "DNA", english = "Talent", icon = "🧬",
+		tiers = { { label = "Karaniwan", weight = 30 }, { label = "Magaling", weight = 45 }, { label = "Henyo", weight = 25 } },
+	},
+}
+
+-- What each tier does (index = tier).
+Config.YamanEffects = {
+	startingPesos = { 400, 1000, 3000 },
+	dailyAllowance = { 0, 60, 200 }, -- "padala" from your parents every morning
+	socialDecayMult = { 0.8, 1, 1 }, -- Mahirap perk: "Matibay ang samahan" — tight community ties
+}
+Config.SwerteEffects = {
+	goodEventMult = { 0.7, 1, 1.4 },
+	badEventMult = { 1.6, 1, 0.6 },
+	xpMult = { 1.1, 1, 1 }, -- Malas perk: "Natututo sa hirap" — setbacks teach you faster
+}
+Config.DNAEffects = {
+	xpMult = { 1.0, 1.15, 1.3 },
+	talentBonus = 0.25, -- extra xp in your one natural talent skill
+}
+
+function Config.tierLabel(metric: string, tier: number?): string
+	local m = Config.Metrics[metric]
+	local t = m and m.tiers[tier or 2]
+	return if t then t.label else "?"
+end
+
+-- Combined skill xp multiplier for a player (reads replicated attributes).
+function Config.xpMultiplier(source: Instance, skill: string?): number
+	local mult = Config.DNAEffects.xpMult[source:GetAttribute("DNA") or 2] or 1
+	mult *= Config.SwerteEffects.xpMult[source:GetAttribute("Swerte") or 2] or 1
+	if skill and source:GetAttribute("Talent") == skill then
+		mult *= 1 + Config.DNAEffects.talentBonus
+	end
+	return mult
+end
+
+--------------------------------------------------------------------------
+-- CITIES — all three live in ONE shared world, connected by road.
+--------------------------------------------------------------------------
+Config.CityOrder = { "BaybayAlon", "MetroDakila", "SanBukid" }
+Config.Cities = {
+	BaybayAlon = {
+		name = "Baybay Alon", icon = "🌊", kind = "Bayan sa tabing-dagat", weight = 30,
+		costMult = 1.0, payMult = 1.0, house = "Kubo",
+		origin = Vector3.new(0, 0, 0), spawn = Vector3.new(-2, 3, -22),
+	},
+	MetroDakila = {
+		name = "Metro Dakila", icon = "🏙️", kind = "Siyudad", weight = 40,
+		costMult = 1.4, payMult = 1.35, house = "Bungalow",
+		origin = Vector3.new(3000, 0, 0), spawn = Vector3.new(3000, 3, -20),
+	},
+	SanBukid = {
+		name = "San Bukid", icon = "🌾", kind = "Bayan sa bukid", weight = 30,
+		costMult = 0.85, payMult = 0.9, house = "Kubo",
+		origin = Vector3.new(6000, 40, 0), spawn = Vector3.new(6000, 43, -20),
+	},
+}
+
+function Config.city(id: string?)
+	return Config.Cities[id or ""] or Config.Cities.BaybayAlon
+end
+
+-- Price of an action at a station in a given city.
+function Config.scaledCost(def, cityId: string?): number
+	return math.floor((def.cost or 0) * Config.city(cityId).costMult + 0.5)
+end
+
+--------------------------------------------------------------------------
+-- EDUCATION & PROFESSIONS (10)
+--------------------------------------------------------------------------
+Config.Education = {
+	none = { label = "Walang natapos", rank = 0 },
+	highschool = { label = "High school graduate", rank = 1 },
+	vocational = { label = "Vocational / TechVoc", rank = 1 },
+	college = { label = "College graduate", rank = 2 },
+	maritime = { label = "Maritime graduate", rank = 2 },
+	medicine = { label = "Doctor of Medicine", rank = 3 },
+}
+Config.StartEducation = "highschool"
+
+function Config.meetsEducation(have: string?, need: string?): boolean
+	need = need or "none"
+	have = have or "none"
+	if need == "none" then
+		return true
+	elseif need == "highschool" then
+		return (Config.Education[have] or Config.Education.none).rank >= 1
+	elseif need == "college" then
+		return have == "college" or have == "medicine"
+	end
+	return have == need
+end
+
+Config.ProfessionOrder = {
+	"Mangingisda", "Magsasaka", "Tindero", "Drayber", "Karpintero",
+	"Guro", "Nars", "CallCenter", "Seaman", "Doktor",
+}
+Config.Professions = {
+	Mangingisda = { label = "Mangingisda", english = "Fisherfolk", icon = "🎣", education = "none", job = "Mangisda", cities = { "BaybayAlon" } },
+	Magsasaka = { label = "Magsasaka", english = "Farmer", icon = "🌾", education = "none", job = "Magsaka", cities = { "BaybayAlon", "SanBukid" } },
+	Tindero = { label = "Tindero / Negosyante", english = "Vendor", icon = "🧺", education = "none", job = "Magtinda", cities = { "BaybayAlon", "MetroDakila", "SanBukid" } },
+	Drayber = { label = "Drayber", english = "Driver", icon = "🚌", education = "none", job = "DriveJeep", cities = { "BaybayAlon", "MetroDakila", "SanBukid" } },
+	Karpintero = { label = "Karpintero / Construction", english = "Construction", icon = "🔨", education = "none", job = "Magkarpintero", cities = { "BaybayAlon", "MetroDakila", "SanBukid" } },
+	Guro = { label = "Guro", english = "Teacher", icon = "📚", education = "college", job = "Magturo", cities = { "BaybayAlon", "MetroDakila", "SanBukid" } },
+	Nars = { label = "Nars", english = "Nurse", icon = "🩺", education = "college", job = "MagNars", cities = { "BaybayAlon", "MetroDakila", "SanBukid" } },
+	CallCenter = { label = "Call Center Agent", english = "BPO", icon = "🎧", education = "highschool", job = "CallCenter", cities = { "MetroDakila" } },
+	Seaman = { label = "Seaman", english = "Seafarer", icon = "⚓", education = "maritime", job = "Maglayag", cities = { "BaybayAlon" } },
+	Doktor = { label = "Doktor", english = "Doctor", icon = "🥼", education = "medicine", job = "Manggamot", cities = { "MetroDakila" } },
+}
+
+-- Parents' jobs, chosen from [hometown][Yaman tier]. Parents are never shown as characters,
+-- only through text messages and story notifications.
+Config.ParentJobs = {
+	BaybayAlon = { { "Mangingisda", "Tindero" }, { "Guro", "Drayber" }, { "Seaman", "Nars" } },
+	MetroDakila = { { "Drayber", "Tindero" }, { "CallCenter", "Guro" }, { "Doktor", "Tindero" } },
+	SanBukid = { { "Magsasaka", "Tindero" }, { "Guro", "Magsasaka" }, { "Tindero", "Nars" } },
+}
+
+Config.ParentIntro = {
+	"📱 Mama: Anak, kahit mahirap ang buhay natin, nandito lang kami. Kayod lang!",
+	"📱 Papa: Ingat ka palagi, anak. Tumawag ka kung may kailangan ka.",
+	"📱 Mama: Anak, huwag mong sasayangin ang mga oportunidad mo, ha?",
+}
+
+--------------------------------------------------------------------------
+-- TRAVEL — provincial buses between cities, with surprise events on the way.
+--------------------------------------------------------------------------
+Config.Routes = {
+	{ id = "Highway", a = "BaybayAlon", b = "MetroDakila", fare = 60, tripSeconds = 90, dwellSeconds = 40, buses = 2,
+		color = C(210, 55, 50) },
+	{ id = "Bundok", a = "MetroDakila", b = "SanBukid", fare = 80, tripSeconds = 110, dwellSeconds = 40, buses = 2,
+		color = C(40, 130, 80) },
+}
+Config.TripEventRolls = { 0.35, 0.7 } -- points in the trip where each passenger may get an event
+Config.TripEventChance = 0.55
+
+-- good events scale with Swerte; bad events are likelier when Malas.
+-- pesos = {min, max}; negative = you lose money. %s in text is replaced by the amount.
+Config.TripEvents = {
+	{ id = "Barya", good = true, weight = 30, pesos = { 5, 25 }, text = "🪙 May napulot kang barya sa sahig ng bus: %s!" },
+	{ id = "Ninong", good = true, weight = 10, pesos = { 100, 300 }, text = "🎁 Nakasabay mo si Ninong Boy! Inabutan ka ng %s. \"Pang-merienda mo, inaanak!\"" },
+	{ id = "LostFound", good = true, weight = 12, pesos = { 50, 150 }, text = "👛 May naiwang pitaka sa upuan. Isinauli mo sa konduktor at binigyan ka ng pabuya na %s." },
+	{ id = "Katabi", good = true, weight = 20, effects = { Social = 20 }, text = "💬 Nakakuwentuhan mo ang katabi mo. Ang dami n'yong pagkakapareho!" },
+	{ id = "Mani", good = true, weight = 15, effects = { Hunger = 12 }, text = "🥜 Sumakay ang tindero ng mani at chicharon. Nilibre ka ng katabi mo!" },
+	{ id = "Tanawin", good = true, weight = 15, effects = { Fun = 15 }, text = "🌄 Ang ganda ng tanawin sa bintana..." },
+	{ id = "Idlip", good = true, weight = 15, effects = { Energy = 15 }, text = "😴 Nakaidlip ka sa biyahe. Ang sarap!" },
+	{ id = "Dukot", good = false, weight = 10, pesos = { -80, -20 }, text = "😱 Nadukutan ka! Nawala ang %s. Ingat sa gamit!" },
+	{ id = "Flat", good = false, weight = 12, effects = { Fun = -10 }, text = "🛞 Na-flat ang gulong ng bus. Ang tagal maghintay..." },
+	{ id = "Traffic", good = false, weight = 15, effects = { Energy = -10, Fun = -5 }, text = "🚗 Grabe ang traffic sa Dakila Avenue..." },
+	{ id = "Hilo", good = false, weight = 10, effects = { Fun = -10, Hunger = -5 }, text = "🤢 Nahilo ka sa biyahe. Sana nagdala ka ng kendi..." },
+}
 
 return Config

@@ -21,35 +21,52 @@ local DataService = require(Services.DataService)
 local TimeService = require(Services.TimeService)
 local NPCService = require(Services.NPCService)
 local WorldBuilder = require(Services.WorldBuilder)
+local TravelService = require(Services.TravelService)
+local IdentityService = require(Services.IdentityService)
+local CareerService = require(Services.CareerService)
 
 NeedsService.bind(ActionService)
 
--- 1) World
+-- 1) World (three cities in one shared map)
 StationService.init()
 WorldBuilder.build()
 LotService.init()
 NPCService.init()
 TimeService.init()
+TravelService.init()
 
 -- 2) Systems
 ActionService.init()
 NeedsService.start()
 BuildService.init()
+IdentityService.init()
+CareerService.init()
 
 --------------------------------------------------------------------------
 -- Players
 --------------------------------------------------------------------------
 local function teleportHome(player: Player)
-	local lot = LotService.get(player)
 	local character = player.Character
-	if lot and character then
-		ActionService.stop(player, "cancel")
-		character:PivotTo(LotService.spawnCFrame(lot))
+	if not character then
+		return
 	end
+	local lot = LotService.get(player)
+	local target = if lot
+		then LotService.spawnCFrame(lot)
+		else CFrame.new(Config.city(player:GetAttribute("Hometown")).spawn)
+	ActionService.stop(player, "cancel")
+	-- with StreamingEnabled, load the destination for this player before moving them there
+	pcall(function()
+		player:RequestStreamAroundAsync(target.Position, 5)
+	end)
+	character:PivotTo(target)
 end
 
 local function onCharacterAdded(player: Player, character: Model)
-	task.spawn(Overhead.attach, character)
+	task.spawn(function()
+		Overhead.attach(character)
+		Overhead.setAge(player, player:GetAttribute("Age"))
+	end)
 	local humanoid = character:WaitForChild("Humanoid", 10) :: Humanoid?
 	if humanoid then
 		humanoid.WalkSpeed = Config.WalkSpeed
@@ -66,9 +83,26 @@ local function onPlayerAdded(player: Player)
 	if not player.Parent then
 		return -- left while loading
 	end
-	DataService.apply(player, profile)
 
-	local lot = LotService.assign(player)
+	-- Ikot ng Kapalaran: roll a starting life once, the first time we see this player
+	local identity = IdentityService.sanitize(profile.Identity)
+	if not identity then
+		identity = IdentityService.roll()
+		profile.IdentitySeen = false
+		if isNew then
+			profile.Pesos = Config.YamanEffects.startingPesos[identity.Yaman]
+		end
+	end
+	DataService.apply(player, profile)
+	IdentityService.apply(player, identity)
+	player:GetAttributeChangedSignal("Age"):Connect(function()
+		Overhead.setAge(player, player:GetAttribute("Age"))
+	end)
+
+	local lot = LotService.assign(player, identity.Hometown)
+	if not lot then
+		player:SetAttribute("HomeCity", identity.Hometown)
+	end
 	if lot then
 		BuildService.load(player, profile.Furniture)
 	end
@@ -86,20 +120,19 @@ local function onPlayerAdded(player: Player)
 		if not player.Parent then
 			return
 		end
-		if isNew then
-			Remotes.notify(player, "🏠 Mabuhay! Maligayang pagdating sa Barangay Bahay Buhay!", "good")
-			Remotes.notify(player, "May " .. Util.formatPesos(Config.StartingPesos) .. " kang puhunan. Alagaan ang sarili, magtrabaho, at pagandahin ang bahay mo!", "info")
-		else
+		if player:GetAttribute("IdentitySeen") then
 			Remotes.notify(player, "🏠 Maligayang pagbabalik, " .. player.DisplayName .. "!", "good")
 		end
 		if not lot then
-			Remotes.notify(player, "Puno na ang mga lote sa barangay. Makikitira ka muna sa plaza!", "warn")
+			Remotes.notify(player, "Puno na ang mga lote sa server na ito. Makikitira ka muna sa bayan mo (boarding house: darating sa Phase 1).", "warn")
+		elseif lot.city ~= identity.Hometown then
+			Remotes.notify(player, "🏠 Puno na ang lote sa bayan mo, kaya sa " .. Config.city(lot.city).name .. " ka muna nakatira.", "info")
 		end
 	end)
 end
 
 local function savePlayer(player: Player)
-	DataService.save(player, BuildService.serialize(player))
+	DataService.save(player, BuildService.serialize(player), IdentityService.collect(player))
 end
 
 Players.PlayerAdded:Connect(onPlayerAdded)
@@ -158,7 +191,21 @@ TimeService.onMorning(function(day)
 		player:SetAttribute("DaysPlayed", (player:GetAttribute("DaysPlayed") or 0) + 1)
 		player:SetAttribute("EarnedToday", 0)
 
-		local bill = Config.BillBase + Config.BillPerFurniture * BuildService.count(player)
+		IdentityService.morningAllowance(player)
+
+		-- aging: one year every Config.DaysPerYear mornings you're online for
+		local ageDays = (player:GetAttribute("AgeDays") or 0) + 1
+		if ageDays >= Config.DaysPerYear then
+			ageDays = 0
+			local age = (player:GetAttribute("Age") or Config.StartAge) + 1
+			player:SetAttribute("Age", age)
+			Remotes.notify(player, string.format("🎂 Maligayang kaarawan! %d taong gulang ka na.", age), "good")
+		end
+		player:SetAttribute("AgeDays", ageDays)
+
+		local lot = LotService.get(player)
+		local costMult = Config.city(lot and lot.city).costMult
+		local bill = math.floor((Config.BillBase + Config.BillPerFurniture * BuildService.count(player)) * costMult + 0.5)
 		local pesos = player:GetAttribute("Pesos") or 0
 		local paid = math.min(bill, pesos)
 		player:SetAttribute("Pesos", pesos - paid)

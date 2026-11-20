@@ -38,8 +38,14 @@ function DataService.defaultProfile()
 		needs[id] = 85
 	end
 	return {
-		Version = 1,
+		Version = 2,
 		Pesos = Config.StartingPesos,
+		Identity = nil, -- rolled by IdentityService on first join
+		IdentitySeen = false,
+		Age = Config.StartAge,
+		AgeDays = 0,
+		Education = Config.StartEducation,
+		Profession = nil,
 		Needs = needs,
 		Skills = {},
 		Relationships = {},
@@ -84,6 +90,12 @@ function DataService.load(player: Player)
 		profile.Skills = if type(data.Skills) == "table" then data.Skills else {}
 		profile.Relationships = if type(data.Relationships) == "table" then data.Relationships else {}
 		profile.Furniture = if type(data.Furniture) == "table" then data.Furniture else nil
+		profile.Identity = if type(data.Identity) == "table" then data.Identity else nil
+		profile.IdentitySeen = data.IdentitySeen == true
+		profile.Age = tonumber(data.Age) or Config.StartAge
+		profile.AgeDays = tonumber(data.AgeDays) or 0
+		profile.Education = if Config.Education[data.Education] then data.Education else Config.StartEducation
+		profile.Profession = if Config.Professions[data.Profession] then data.Profession else nil
 	end
 	return profile, isNew
 end
@@ -92,6 +104,11 @@ end
 function DataService.apply(player: Player, profile)
 	player:SetAttribute("Pesos", profile.Pesos)
 	player:SetAttribute("DaysPlayed", profile.DaysPlayed)
+	player:SetAttribute("IdentitySeen", profile.IdentitySeen)
+	player:SetAttribute("Age", profile.Age)
+	player:SetAttribute("AgeDays", profile.AgeDays)
+	player:SetAttribute("Education", profile.Education)
+	player:SetAttribute("Profession", profile.Profession)
 	for _, id in Config.NeedOrder do
 		player:SetAttribute("Need_" .. id, profile.Needs[id])
 	end
@@ -103,8 +120,14 @@ function DataService.apply(player: Player, profile)
 	end
 end
 
-function DataService.collect(player: Player, furniture: { any })
+function DataService.collect(player: Player, furniture: { any }, identity: any)
 	local profile = DataService.defaultProfile()
+	profile.Identity = identity
+	profile.IdentitySeen = player:GetAttribute("IdentitySeen") == true
+	profile.Age = player:GetAttribute("Age") or Config.StartAge
+	profile.AgeDays = player:GetAttribute("AgeDays") or 0
+	profile.Education = player:GetAttribute("Education") or Config.StartEducation
+	profile.Profession = player:GetAttribute("Profession")
 	profile.Pesos = player:GetAttribute("Pesos") or 0
 	profile.DaysPlayed = player:GetAttribute("DaysPlayed") or 0
 	for _, id in Config.NeedOrder do
@@ -120,11 +143,11 @@ function DataService.collect(player: Player, furniture: { any })
 	return profile
 end
 
-function DataService.save(player: Player, furniture: { any })
+function DataService.save(player: Player, furniture: { any }, identity: any)
 	if not store or not canSave[player] or not player:GetAttribute("Loaded") then
 		return
 	end
-	local profile = DataService.collect(player, furniture)
+	local profile = DataService.collect(player, furniture, identity)
 	local ok, err = pcall(function()
 		store:UpdateAsync(key(player), function()
 			return profile

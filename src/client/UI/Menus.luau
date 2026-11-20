@@ -73,18 +73,23 @@ function Menus.openStation(model: Model, stationId: string)
 	})
 
 	local pesos = player:GetAttribute("Pesos") or 0
+	local cityId = model:GetAttribute("City")
 	for i, actionId in cfg.actions do
 		local def = Config.Actions[actionId]
+		local cost = Config.scaledCost(def, cityId)
 		local price = ""
-		if def.cost and def.cost > 0 then
-			price = "  ·  " .. Util.formatPesos(def.cost)
+		if cost > 0 then
+			price = "  ·  " .. Util.formatPesos(cost)
 		elseif def.pay then
-			price = "  ·  Sweldo ~" .. Util.formatPesos(def.pay)
+			price = "  ·  Sweldo ~" .. Util.formatPesos(def.pay * Config.city(cityId).payMult)
+		end
+		if def.profession and player:GetAttribute("Profession") ~= def.profession then
+			price ..= "  ·  🔒 " .. Config.Professions[def.profession].label
 		end
 		local hours = if def.hours
 			then string.format("  ·  %s–%s", Util.formatHour(def.hours[1]), Util.formatHour(def.hours[2]))
 			else ""
-		local affordable = (def.cost or 0) <= pesos
+		local affordable = cost <= pesos
 		local button = Theme.button({
 			Text = "",
 			Size = UDim2.new(1, -24, 0, rowHeight - 8),
@@ -221,6 +226,61 @@ local function renderRelationships()
 	return panel
 end
 
+-- "Ako" — your own private identity. Nobody else can see this (only your age is public).
+local function renderIdentity()
+	local rows = {
+		{ "📍 Bayang sinilangan", Config.city(player:GetAttribute("Hometown")).name },
+		{ "🏠 Tirahan", Config.city(player:GetAttribute("HomeCity")).name },
+		{ "🎂 Edad", tostring(player:GetAttribute("Age") or "?") .. " taong gulang" },
+	}
+	for _, metric in Config.MetricOrder do
+		local m = Config.Metrics[metric]
+		table.insert(rows, { m.icon .. " " .. m.label, Config.tierLabel(metric, player:GetAttribute(metric)) })
+	end
+	local talent = Config.Skills[player:GetAttribute("Talent")]
+	table.insert(rows, { "✨ Likas na galing", if talent then talent.icon .. " " .. talent.label else "?" })
+	local papa = Config.Professions[player:GetAttribute("Papa")]
+	local mama = Config.Professions[player:GetAttribute("Mama")]
+	table.insert(rows, { "👨 Papa", if papa then papa.label else "?" })
+	table.insert(rows, { "👩 Mama", if mama then mama.label else "?" })
+	local edu = Config.Education[player:GetAttribute("Education") or "none"]
+	table.insert(rows, { "🎓 Edukasyon", if edu then edu.label else "?" })
+	local prof = Config.Professions[player:GetAttribute("Profession")]
+	table.insert(rows, { "💼 Trabaho", if prof then prof.icon .. " " .. prof.label else "Wala pa" })
+
+	local panel = Theme.panel({
+		Name = "SidePanel",
+		Size = UDim2.fromOffset(340, 60 + #rows * 28 + 30),
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -110, 0.5, 0),
+		Parent = gui,
+	})
+	Theme.label({
+		Text = "🪪 Ako",
+		Font = Theme.fontTitle,
+		TextSize = 20,
+		TextColor3 = Theme.yellow,
+		Size = UDim2.new(1, -24, 0, 26),
+		Position = UDim2.fromOffset(12, 10),
+		Parent = panel,
+	})
+	for i, row in rows do
+		local y = 44 + (i - 1) * 28
+		Theme.label({ Text = row[1], TextSize = 14, TextColor3 = Theme.textDim, Size = UDim2.new(0.5, -12, 0, 24), Position = UDim2.fromOffset(12, y), Parent = panel })
+		Theme.label({ Text = row[2], Font = Theme.fontBold, TextSize = 14, Size = UDim2.new(0.5, -12, 0, 24), Position = UDim2.new(0.5, 0, 0, y), Parent = panel })
+	end
+	Theme.label({
+		Text = "🔒 Ikaw lang ang nakakakita nito. Edad lang ang nakikita ng iba.",
+		TextSize = 12,
+		TextColor3 = Theme.textDim,
+		TextWrapped = true,
+		Size = UDim2.new(1, -24, 0, 26),
+		Position = UDim2.new(0, 12, 1, -32),
+		Parent = panel,
+	})
+	return panel
+end
+
 function Menus.toggle(kind: string)
 	if sidePanelKind == kind then
 		closeSide()
@@ -228,11 +288,117 @@ function Menus.toggle(kind: string)
 	end
 	closeSide()
 	sidePanelKind = kind
-	sidePanel = if kind == "skills" then renderSkills() else renderRelationships()
+	sidePanel = if kind == "skills"
+		then renderSkills()
+		elseif kind == "identity" then renderIdentity()
+		else renderRelationships()
+end
+
+--------------------------------------------------------------------------
+-- PESO job board
+--------------------------------------------------------------------------
+function Menus.openCareer()
+	closeStation()
+	local rowHeight = 50
+	local panel = Theme.panel({
+		Name = "CareerMenu",
+		Size = UDim2.fromOffset(560, 70 + rowHeight * #Config.ProfessionOrder + 54),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Parent = gui,
+	})
+	local uiScale = create("UIScale", {})
+	uiScale.Parent = panel
+	local view = workspace.CurrentCamera.ViewportSize
+	uiScale.Scale = math.clamp(math.min((view.X - 24) / 560, (view.Y - 24) / panel.Size.Y.Offset), 0.45, 1)
+	stationPanel = panel
+
+	Theme.label({
+		Text = "💼 PESO — Public Employment Service Office",
+		Font = Theme.fontTitle,
+		TextSize = 20,
+		TextColor3 = Theme.yellow,
+		Size = UDim2.new(1, -24, 0, 28),
+		Position = UDim2.fromOffset(12, 10),
+		Parent = panel,
+	})
+	local edu = Config.Education[player:GetAttribute("Education") or "none"]
+	Theme.label({
+		Text = "Edukasyon mo: " .. (if edu then edu.label else "?") .. "  ·  Pumili ng trabaho. Sa mga nakalistang bayan lang ito pwedeng gawin.",
+		TextSize = 13,
+		TextColor3 = Theme.textDim,
+		TextWrapped = true,
+		Size = UDim2.new(1, -24, 0, 30),
+		Position = UDim2.fromOffset(12, 38),
+		Parent = panel,
+	})
+	local current = player:GetAttribute("Profession")
+	for i, id in Config.ProfessionOrder do
+		local prof = Config.Professions[id]
+		local job = Config.Actions[prof.job]
+		local unlocked = Config.meetsEducation(player:GetAttribute("Education"), prof.education)
+		local icons = {}
+		for _, cityId in prof.cities do
+			table.insert(icons, Config.city(cityId).icon)
+		end
+		local button = Theme.button({
+			Text = "",
+			Size = UDim2.new(1, -24, 0, rowHeight - 6),
+			Position = UDim2.fromOffset(12, 70 + (i - 1) * rowHeight),
+			BackgroundColor3 = if id == current then Color3.fromRGB(40, 110, 60)
+				elseif unlocked then Theme.bgLight
+				else Color3.fromRGB(60, 45, 45),
+			Parent = panel,
+		})
+		Theme.label({
+			Text = prof.icon .. "  " .. prof.label .. (if id == current then "  ✓" else ""),
+			Font = Theme.fontBold,
+			TextSize = 15,
+			Size = UDim2.new(0.55, 0, 0, 20),
+			Position = UDim2.fromOffset(10, 4),
+			Parent = button,
+		})
+		local hours = if job and job.hours
+			then string.format("%s–%s", Util.formatHour(job.hours[1]), Util.formatHour(job.hours[2]))
+			else "Kahit anong oras"
+		Theme.label({
+			Text = string.format("~%s/shift  ·  %s  ·  %s", Util.formatPesos(job and job.pay or 0), hours, table.concat(icons, " ")),
+			TextSize = 12,
+			TextColor3 = Theme.textDim,
+			Size = UDim2.new(1, -20, 0, 18),
+			Position = UDim2.fromOffset(10, 24),
+			Parent = button,
+		})
+		local need = Config.Education[prof.education]
+		Theme.label({
+			Text = if unlocked then "Bukas" else "🔒 " .. (if need then need.label else prof.education),
+			TextSize = 12,
+			TextColor3 = if unlocked then Color3.fromRGB(140, 230, 140) else Color3.fromRGB(240, 150, 140),
+			TextXAlignment = Enum.TextXAlignment.Right,
+			Size = UDim2.new(0.45, -10, 0, 20),
+			Position = UDim2.new(0.55, 0, 0, 4),
+			Parent = button,
+		})
+		button.Activated:Connect(function()
+			if unlocked then
+				Remotes.ChooseProfession:FireServer(id)
+				closeStation()
+			end
+		end)
+	end
+	local close = Theme.button({
+		Text = "Isara",
+		Size = UDim2.fromOffset(120, 36),
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -10),
+		Parent = panel,
+	})
+	close.Activated:Connect(closeStation)
 end
 
 function Menus.init(screenGui: ScreenGui)
 	gui = screenGui
+	Remotes.OpenCareer.OnClientEvent:Connect(Menus.openCareer)
 	Remotes.OpenMenu.OnClientEvent:Connect(function(model, stationId)
 		if typeof(model) == "Instance" and model:IsA("Model") then
 			Menus.openStation(model, stationId)
@@ -240,7 +406,8 @@ function Menus.init(screenGui: ScreenGui)
 	end)
 	-- keep an open side panel live
 	player.AttributeChanged:Connect(function(name)
-		if sidePanelKind and (name:sub(1, 6) == "Skill_" or name:sub(1, 4) == "Rel_") then
+		local identityField = name == "Profession" or name == "Age" or name == "HomeCity" or name == "Education"
+		if sidePanelKind and (name:sub(1, 6) == "Skill_" or name:sub(1, 4) == "Rel_" or identityField) then
 			local kind = sidePanelKind
 			closeSide()
 			Menus.toggle(kind)

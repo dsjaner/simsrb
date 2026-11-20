@@ -26,6 +26,7 @@ local needValues: { [string]: TextLabel } = {}
 local pesosLabel: TextLabel
 local clockLabel: TextLabel
 local moodLabel: TextLabel
+local lifeLabel: TextLabel
 local actionFrame: Frame
 local actionLabel: TextLabel
 local actionFill: Frame
@@ -33,7 +34,7 @@ local actionFill: Frame
 local function buildStatusCard(gui: ScreenGui)
 	local card = Theme.panel({
 		Name = "Status",
-		Size = UDim2.fromOffset(270, 104),
+		Size = UDim2.fromOffset(270, 126),
 		Position = UDim2.fromOffset(12, 12),
 		Parent = gui,
 	})
@@ -69,6 +70,14 @@ local function buildStatusCard(gui: ScreenGui)
 		TextSize = 15,
 		Size = UDim2.new(1, -24, 0, 18),
 		Position = UDim2.fromOffset(12, 80),
+		Parent = card,
+	})
+	lifeLabel = Theme.label({
+		Text = "",
+		TextSize = 13,
+		TextColor3 = Theme.textDim,
+		Size = UDim2.new(1, -24, 0, 18),
+		Position = UDim2.fromOffset(12, 100),
 		Parent = card,
 	})
 end
@@ -181,6 +190,14 @@ local function refreshNeeds()
 	moodLabel.TextColor3 = mood.color
 end
 
+local function refreshLife()
+	local prof = Config.Professions[player:GetAttribute("Profession")]
+	lifeLabel.Text = string.format("🎂 %s taon  ·  🏠 %s  ·  💼 %s",
+		tostring(player:GetAttribute("Age") or "?"),
+		Config.city(player:GetAttribute("HomeCity")).name,
+		if prof then prof.label else "Walang trabaho")
+end
+
 local function refreshAction()
 	local verb = player:GetAttribute("CurrentAction")
 	actionFrame.Visible = verb ~= nil
@@ -245,8 +262,11 @@ function HUD.init(gui: ScreenGui, onCancel: () -> ())
 			pesosLabel.Text = Util.formatPesos(player:GetAttribute("Pesos"))
 		elseif name == "CurrentAction" or name == "ActionProgress" then
 			refreshAction()
+		elseif name == "Age" or name == "HomeCity" or name == "Profession" then
+			refreshLife()
 		end
 	end)
+	refreshLife()
 	refreshNeeds()
 	refreshAction()
 	pesosLabel.Text = Util.formatPesos(player:GetAttribute("Pesos"))

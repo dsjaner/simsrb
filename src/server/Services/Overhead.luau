@@ -48,7 +48,30 @@ function Overhead.attach(character: Model)
 	corner.CornerRadius = UDim.new(1, 0)
 	corner.Parent = bubble
 
+	-- Age is the only identity detail other players can see.
+	local age = Instance.new("TextLabel")
+	age.Name = "Age"
+	age.Size = UDim2.fromScale(1.4, 0.45)
+	age.Position = UDim2.fromScale(-0.2, 1.0)
+	age.BackgroundTransparency = 1
+	age.Text = ""
+	age.TextScaled = true
+	age.Font = Enum.Font.GothamBold
+	age.TextColor3 = Color3.fromRGB(255, 255, 255)
+	age.TextStrokeTransparency = 0.3
+	age.Parent = gui
+
 	gui.Parent = head
+end
+
+function Overhead.setAge(player: Player, years: number?)
+	local character = player.Character
+	local head = character and character:FindFirstChild("Head")
+	local gui = head and head:FindFirstChild("Overhead")
+	local label = gui and gui:FindFirstChild("Age") :: TextLabel?
+	if label then
+		label.Text = if years then string.format("%d taong gulang", years) else ""
+	end
 end
 
 local function getGui(player: Player): BillboardGui?

@@ -13,6 +13,9 @@ local EVENTS = {
 	"CancelAction", -- client → server ()
 	"Notify", -- server → client (text, kind)
 	"GoHome", -- client → server ()
+	"OpenCareer", -- server → client () — PESO office job board
+	"ChooseProfession", -- client → server (professionId)
+	"IdentitySeen", -- client → server () — finished watching the spin wheel
 }
 local FUNCTIONS = {
 	"PlaceFurniture", -- (id, x, y, z, rotation) → ok, message

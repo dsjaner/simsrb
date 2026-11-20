@@ -1,5 +1,6 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-<Item class="ReplicatedStorage" referent="RBX5"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="Folder" referent="RBX4"><Properties><string name="Name">Shared</string></Properties><Item class="ModuleScript" referent="RBX1"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[--[[
+<Item class="Workspace" referent="RBX1"><Properties><string name="Name">Workspace</string><bool name="StreamingEnabled">true</bool></Properties></Item>
+<Item class="ReplicatedStorage" referent="RBX6"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="Folder" referent="RBX5"><Properties><string name="Name">Shared</string></Properties><Item class="ModuleScript" referent="RBX2"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[--[[
 	Config — every tunable number, action, piece of furniture and NPC lives here.
 	Both server and client read this module, so UI text always matches game rules.
 
@@ -109,7 +110,10 @@ end
 --------------------------------------------------------------------------
 -- SKILLS (Kasanayan)
 --------------------------------------------------------------------------
-Config.SkillOrder = { "Pagluluto", "Pagkanta", "Basketball", "Pangingisda", "Pagmamaneho", "Pagtitinda" }
+Config.SkillOrder = {
+	"Pagluluto", "Pagkanta", "Basketball", "Pangingisda", "Pagmamaneho", "Pagtitinda",
+	"Pagsasaka", "Pagkakarpintero", "Komunikasyon",
+}
 Config.Skills = {
 	Pagluluto = { label = "Pagluluto", english = "Cooking", icon = "🍳" },
 	Pagkanta = { label = "Pagkanta", english = "Singing", icon = "🎤" },
@@ -117,6 +121,9 @@ Config.Skills = {
 	Pangingisda = { label = "Pangingisda", english = "Fishing", icon = "🎣" },
 	Pagmamaneho = { label = "Pagmamaneho", english = "Driving", icon = "🚌" },
 	Pagtitinda = { label = "Pagtitinda", english = "Selling", icon = "🧺" },
+	Pagsasaka = { label = "Pagsasaka", english = "Farming", icon = "🌾" },
+	Pagkakarpintero = { label = "Pagkakarpintero", english = "Construction", icon = "🔨" },
+	Komunikasyon = { label = "Komunikasyon", english = "Communication", icon = "🎧" },
 }
 Config.XpPerLevel = 25
 Config.MaxSkillLevel = 10
@@ -251,15 +258,43 @@ Config.Actions = {
 	-- Trabaho (jobs)
 	DriveJeep = { label = "Mamasada ng jeep", verb = "Namamasada", bubble = "🚌", duration = 30, job = true,
 		pay = 220, hours = { 5, 22 }, effects = { Energy = -18, Fun = -8, Hunger = -10, Hygiene = -8 },
-		skill = "Pagmamaneho", skillXp = 6, payBoost = true,
+		skill = "Pagmamaneho", skillXp = 6, payBoost = true, profession = "Drayber",
 		doneMessages = { "Bayad po! Ang daming pasahero ngayon.", "Para po! Tapos na ang biyahe mo." } },
 	Magtinda = { label = "Magtinda sa palengke", verb = "Nagtitinda", bubble = "🧺", duration = 25, job = true,
 		pay = 160, hours = { 4, 18 }, effects = { Energy = -12, Fun = -5, Hunger = -8, Social = 10 },
-		skill = "Pagtitinda", skillXp = 6, payBoost = true,
+		skill = "Pagtitinda", skillXp = 6, payBoost = true, profession = "Tindero",
 		doneMessages = { "Suki ka na ng mga mamimili!", "Ubos ang paninda mo ngayon!" } },
 	Mangisda = { label = "Mangisda sa bangka", verb = "Nangingisda", bubble = "🎣", duration = 28, job = true,
 		pay = 190, effects = { Energy = -15, Hygiene = -12, Hunger = -10, Fun = 5 },
-		skill = "Pangingisda", skillXp = 6, payBoost = true, doneHook = "Fishing" },
+		skill = "Pangingisda", skillXp = 6, payBoost = true, doneHook = "Fishing", profession = "Mangingisda" },
+	Magsaka = { label = "Magtanim at mag-ani sa palayan", verb = "Nagsasaka", bubble = "🌾", duration = 28, job = true,
+		pay = 170, hours = { 5, 18 }, effects = { Energy = -18, Hygiene = -14, Hunger = -10, Fun = -3 },
+		skill = "Pagsasaka", skillXp = 6, payBoost = true, profession = "Magsasaka",
+		doneMessages = { "Ang ganda ng ani ngayon!", "Nakapagtanim ka ng isang pitak ng palay." } },
+	Magkarpintero = { label = "Magtrabaho sa construction", verb = "Nagkakarpintero", bubble = "🔨", duration = 30, job = true,
+		pay = 230, hours = { 6, 18 }, effects = { Energy = -22, Hygiene = -15, Hunger = -12, Fun = -5 },
+		skill = "Pagkakarpintero", skillXp = 6, payBoost = true, profession = "Karpintero",
+		doneMessages = { "Tapos na ang pader na ginagawa n'yo!", "Sabi ni foreman: 'Ayos ang trabaho mo!'" } },
+	CallCenter = { label = "Mag-shift sa call center", verb = "Sumasagot ng tawag", bubble = "🎧", duration = 30, job = true,
+		pay = 320, hours = { 18, 6 }, effects = { Energy = -20, Fun = -12, Social = -5, Hunger = -8 },
+		skill = "Komunikasyon", skillXp = 6, payBoost = true, profession = "CallCenter",
+		doneMessages = { "Na-resolve mo ang 40 na tawag! \"Thank you for calling!\"", "Graveyard shift na naman... pero sulit ang sweldo." } },
+	Magturo = { label = "Magturo sa klase", verb = "Nagtuturo", bubble = "📚", duration = 28, job = true,
+		pay = 260, hours = { 7, 17 }, effects = { Energy = -15, Fun = -5, Social = 10, Hunger = -8 },
+		skill = "Komunikasyon", skillXp = 5, payBoost = true, profession = "Guro",
+		doneMessages = { "\"Good morning, Ma'am/Sir!\" Ang kukulit ng mga estudyante mo." } },
+	MagNars = { label = "Mag-duty bilang nars", verb = "Nagdu-duty", bubble = "🩺", duration = 30, job = true,
+		pay = 300, effects = { Energy = -20, Hygiene = -8, Hunger = -10, Social = 5 },
+		skill = "Komunikasyon", skillXp = 5, payBoost = true, profession = "Nars",
+		doneMessages = { "Salamat sa pag-aalaga, nars!" } },
+	Manggamot = { label = "Manggamot ng pasyente", verb = "Nanggagamot", bubble = "🥼", duration = 30, job = true,
+		pay = 600, effects = { Energy = -25, Fun = -8, Hunger = -12 },
+		skill = "Komunikasyon", skillXp = 5, payBoost = true, profession = "Doktor",
+		doneMessages = { "Naligtas mo ang isang pasyente. Proud si Mama!" } },
+	Maglayag = { label = "Sumampa sa barko", verb = "Naglalayag", bubble = "⚓", duration = 35, job = true,
+		pay = 500, effects = { Energy = -20, Social = -15, Fun = -10, Hunger = -10 },
+		skill = "Pangingisda", skillXp = 4, payBoost = true, profession = "Seaman",
+		doneMessages = { "Nakauwi ka galing sa biyahe sa dagat." } },
 
 	-- Kapitbahay (NPC)
 	Kwentuhan = { label = "Makipagkwentuhan", verb = "Nakikipagkwentuhan", bubble = "💬", duration = 10,
@@ -304,6 +339,14 @@ Config.Stations = {
 	Bangka = { title = "Bangka", prompt = "Mangisda", actions = { "Mangisda" } },
 	Simbahan = { title = "Simbahan", prompt = "Magsimba", actions = { "Magsimba" } },
 	Poso = { title = "Poso", prompt = "Maghilamos", actions = { "Maghilamos" } },
+	Palayan = { title = "Palayan", prompt = "Magsaka", actions = { "Magsaka" } },
+	Construction = { title = "Construction Site", prompt = "Magtrabaho", actions = { "Magkarpintero" } },
+	BPO = { title = "Call Center", prompt = "Mag-shift", actions = { "CallCenter" } },
+	Ospital = { title = "Ospital", prompt = "Mag-duty", actions = { "MagNars", "Manggamot" } },
+	RHU = { title = "Rural Health Unit", prompt = "Mag-duty", actions = { "MagNars" } },
+	Paaralan = { title = "Paaralan", prompt = "Magturo", actions = { "Magturo" } },
+	Pantalan = { title = "Pantalan", prompt = "Sumampa", actions = { "Maglayag" } },
+	PESO = { title = "PESO Office", prompt = "Maghanap ng trabaho", actions = {}, special = "Career" },
 
 	-- NPCs
 	NPC_Kapitbahay = { title = "Kapitbahay", prompt = "Kausapin", actions = { "Kwentuhan", "Chismis" } },
@@ -349,15 +392,27 @@ for _, item in Config.Furniture do
 	Config.FurnitureById[item.id] = item
 end
 
--- Starting furniture for a brand-new player, relative to their lot origin.
--- The bahay kubo floor is at y = 4; the yard is y = 0. r = rotation in degrees.
+-- Starting furniture for a brand-new player, relative to their lot origin. r = rotation in degrees.
+-- inHouse = true: y is measured from the house floor (kubo floor is 4 high, bungalow 0.6).
 Config.StarterFurniture = {
-	{ id = "Banig", x = -10, y = 4, z = -15.5, r = 0 },
-	{ id = "Kalan", x = 9, y = 4, z = -18, r = 0 },
-	{ id = "Paliguan", x = 11, y = 4, z = -1, r = 180 },
-	{ id = "Inidoro", x = 13, y = 4, z = -9, r = 270 },
+	{ id = "Banig", x = -10, y = 0, z = -15.5, r = 0, inHouse = true },
+	{ id = "Kalan", x = 9, y = 0, z = -18, r = 0, inHouse = true },
+	{ id = "Paliguan", x = 11, y = 0, z = -1, r = 180, inHouse = true },
+	{ id = "Inidoro", x = 13, y = 0, z = -9, r = 270, inHouse = true },
 	{ id = "Halaman", x = -9, y = 0, z = 12, r = 0 },
 }
+
+-- House types. Every house shares the same footprint (lot-local), so furniture fits in any of them.
+Config.HouseTypes = {
+	Kubo = { label = "Bahay Kubo", floorY = 4 },
+	Bungalow = { label = "Bungalow", floorY = 0.6 },
+}
+Config.HouseFootprint = { minX = -15, maxX = 15, minZ = -20, maxZ = 4 }
+
+function Config.insideHouse(x: number, z: number): boolean
+	local f = Config.HouseFootprint
+	return x >= f.minX and x <= f.maxX and z >= f.minZ and z <= f.maxZ
+end
 
 --------------------------------------------------------------------------
 -- NPCs (mga kapitbahay)
@@ -375,6 +430,12 @@ Config.NPCs = {
 	{ id = "KuyaJun", name = "Kuya Jun", station = "NPC_Kapitbahay", home = Vector3.new(100, 0.2, 16),
 		skin = C(150, 100, 68), shirt = C(240, 200, 60), pants = C(50, 50, 60), accessory = "Towel", walkSpeed = 8,
 		lines = { "Bayan! Bayan! Sakay na!", "Barya lang po sa umaga.", "Traffic na naman sa kanto." } },
+	{ id = "AteJoy", name = "Ate Joy", station = "NPC_Kapitbahay", home = Vector3.new(3030, 0.3, 26),
+		skin = C(200, 145, 110), shirt = C(60, 90, 160), pants = C(40, 40, 50), accessory = "Towel", walkSpeed = 9,
+		lines = { "Kakagaling ko lang sa night shift...", "Ang mahal ng upa dito sa Metro!", "Uuwi ako sa probinsya sa Pasko." } },
+	{ id = "TatayAmbo", name = "Tatay Ambo", station = "NPC_Lola", home = Vector3.new(5900, 40.3, -28),
+		skin = C(150, 98, 64), shirt = C(235, 235, 225), pants = C(70, 60, 50), accessory = "Salakot", walkSpeed = 5,
+		lines = { "Sana umulan na para sa palay.", "Ang mga anak ko, nasa Maynila na lahat.", "Masarap ang buhay sa bukid, apo." } },
 }
 
 Config.NPCById = {}
@@ -382,9 +443,181 @@ for _, npc in Config.NPCs do
 	Config.NPCById[npc.id] = npc
 end
 
+--------------------------------------------------------------------------
+-- IDENTITY — "Ikot ng Kapalaran". Rolled once when a player first joins.
+-- Three privilege metrics, each with 3 tiers (1 = low, 2 = middle, 3 = high).
+-- None of these are shown to other players. Only AGE is public.
+--------------------------------------------------------------------------
+Config.StartAge = 18 -- Phase 0. Playable childhood (start at 7) arrives in Phase 1.
+Config.DaysPerYear = 3 -- in-game days (while you're online) per year of age
+
+Config.MetricOrder = { "Yaman", "Swerte", "DNA" }
+Config.Metrics = {
+	Yaman = {
+		label = "Yaman", english = "Wealth", icon = "💰",
+		tiers = { { label = "Mahirap", weight = 30 }, { label = "Katamtaman", weight = 45 }, { label = "Maykaya", weight = 25 } },
+	},
+	Swerte = {
+		label = "Swerte", english = "Luck", icon = "🍀",
+		tiers = { { label = "Malas", weight = 30 }, { label = "Karaniwan", weight = 45 }, { label = "Swerte", weight = 25 } },
+	},
+	DNA = {
+		label = "DNA", english = "Talent", icon = "🧬",
+		tiers = { { label = "Karaniwan", weight = 30 }, { label = "Magaling", weight = 45 }, { label = "Henyo", weight = 25 } },
+	},
+}
+
+-- What each tier does (index = tier).
+Config.YamanEffects = {
+	startingPesos = { 400, 1000, 3000 },
+	dailyAllowance = { 0, 60, 200 }, -- "padala" from your parents every morning
+	socialDecayMult = { 0.8, 1, 1 }, -- Mahirap perk: "Matibay ang samahan" — tight community ties
+}
+Config.SwerteEffects = {
+	goodEventMult = { 0.7, 1, 1.4 },
+	badEventMult = { 1.6, 1, 0.6 },
+	xpMult = { 1.1, 1, 1 }, -- Malas perk: "Natututo sa hirap" — setbacks teach you faster
+}
+Config.DNAEffects = {
+	xpMult = { 1.0, 1.15, 1.3 },
+	talentBonus = 0.25, -- extra xp in your one natural talent skill
+}
+
+function Config.tierLabel(metric: string, tier: number?): string
+	local m = Config.Metrics[metric]
+	local t = m and m.tiers[tier or 2]
+	return if t then t.label else "?"
+end
+
+-- Combined skill xp multiplier for a player (reads replicated attributes).
+function Config.xpMultiplier(source: Instance, skill: string?): number
+	local mult = Config.DNAEffects.xpMult[source:GetAttribute("DNA") or 2] or 1
+	mult *= Config.SwerteEffects.xpMult[source:GetAttribute("Swerte") or 2] or 1
+	if skill and source:GetAttribute("Talent") == skill then
+		mult *= 1 + Config.DNAEffects.talentBonus
+	end
+	return mult
+end
+
+--------------------------------------------------------------------------
+-- CITIES — all three live in ONE shared world, connected by road.
+--------------------------------------------------------------------------
+Config.CityOrder = { "BaybayAlon", "MetroDakila", "SanBukid" }
+Config.Cities = {
+	BaybayAlon = {
+		name = "Baybay Alon", icon = "🌊", kind = "Bayan sa tabing-dagat", weight = 30,
+		costMult = 1.0, payMult = 1.0, house = "Kubo",
+		origin = Vector3.new(0, 0, 0), spawn = Vector3.new(-2, 3, -22),
+	},
+	MetroDakila = {
+		name = "Metro Dakila", icon = "🏙️", kind = "Siyudad", weight = 40,
+		costMult = 1.4, payMult = 1.35, house = "Bungalow",
+		origin = Vector3.new(3000, 0, 0), spawn = Vector3.new(3000, 3, -20),
+	},
+	SanBukid = {
+		name = "San Bukid", icon = "🌾", kind = "Bayan sa bukid", weight = 30,
+		costMult = 0.85, payMult = 0.9, house = "Kubo",
+		origin = Vector3.new(6000, 40, 0), spawn = Vector3.new(6000, 43, -20),
+	},
+}
+
+function Config.city(id: string?)
+	return Config.Cities[id or ""] or Config.Cities.BaybayAlon
+end
+
+-- Price of an action at a station in a given city.
+function Config.scaledCost(def, cityId: string?): number
+	return math.floor((def.cost or 0) * Config.city(cityId).costMult + 0.5)
+end
+
+--------------------------------------------------------------------------
+-- EDUCATION & PROFESSIONS (10)
+--------------------------------------------------------------------------
+Config.Education = {
+	none = { label = "Walang natapos", rank = 0 },
+	highschool = { label = "High school graduate", rank = 1 },
+	vocational = { label = "Vocational / TechVoc", rank = 1 },
+	college = { label = "College graduate", rank = 2 },
+	maritime = { label = "Maritime graduate", rank = 2 },
+	medicine = { label = "Doctor of Medicine", rank = 3 },
+}
+Config.StartEducation = "highschool"
+
+function Config.meetsEducation(have: string?, need: string?): boolean
+	need = need or "none"
+	have = have or "none"
+	if need == "none" then
+		return true
+	elseif need == "highschool" then
+		return (Config.Education[have] or Config.Education.none).rank >= 1
+	elseif need == "college" then
+		return have == "college" or have == "medicine"
+	end
+	return have == need
+end
+
+Config.ProfessionOrder = {
+	"Mangingisda", "Magsasaka", "Tindero", "Drayber", "Karpintero",
+	"Guro", "Nars", "CallCenter", "Seaman", "Doktor",
+}
+Config.Professions = {
+	Mangingisda = { label = "Mangingisda", english = "Fisherfolk", icon = "🎣", education = "none", job = "Mangisda", cities = { "BaybayAlon" } },
+	Magsasaka = { label = "Magsasaka", english = "Farmer", icon = "🌾", education = "none", job = "Magsaka", cities = { "BaybayAlon", "SanBukid" } },
+	Tindero = { label = "Tindero / Negosyante", english = "Vendor", icon = "🧺", education = "none", job = "Magtinda", cities = { "BaybayAlon", "MetroDakila", "SanBukid" } },
+	Drayber = { label = "Drayber", english = "Driver", icon = "🚌", education = "none", job = "DriveJeep", cities = { "BaybayAlon", "MetroDakila", "SanBukid" } },
+	Karpintero = { label = "Karpintero / Construction", english = "Construction", icon = "🔨", education = "none", job = "Magkarpintero", cities = { "BaybayAlon", "MetroDakila", "SanBukid" } },
+	Guro = { label = "Guro", english = "Teacher", icon = "📚", education = "college", job = "Magturo", cities = { "BaybayAlon", "MetroDakila", "SanBukid" } },
+	Nars = { label = "Nars", english = "Nurse", icon = "🩺", education = "college", job = "MagNars", cities = { "BaybayAlon", "MetroDakila", "SanBukid" } },
+	CallCenter = { label = "Call Center Agent", english = "BPO", icon = "🎧", education = "highschool", job = "CallCenter", cities = { "MetroDakila" } },
+	Seaman = { label = "Seaman", english = "Seafarer", icon = "⚓", education = "maritime", job = "Maglayag", cities = { "BaybayAlon" } },
+	Doktor = { label = "Doktor", english = "Doctor", icon = "🥼", education = "medicine", job = "Manggamot", cities = { "MetroDakila" } },
+}
+
+-- Parents' jobs, chosen from [hometown][Yaman tier]. Parents are never shown as characters,
+-- only through text messages and story notifications.
+Config.ParentJobs = {
+	BaybayAlon = { { "Mangingisda", "Tindero" }, { "Guro", "Drayber" }, { "Seaman", "Nars" } },
+	MetroDakila = { { "Drayber", "Tindero" }, { "CallCenter", "Guro" }, { "Doktor", "Tindero" } },
+	SanBukid = { { "Magsasaka", "Tindero" }, { "Guro", "Magsasaka" }, { "Tindero", "Nars" } },
+}
+
+Config.ParentIntro = {
+	"📱 Mama: Anak, kahit mahirap ang buhay natin, nandito lang kami. Kayod lang!",
+	"📱 Papa: Ingat ka palagi, anak. Tumawag ka kung may kailangan ka.",
+	"📱 Mama: Anak, huwag mong sasayangin ang mga oportunidad mo, ha?",
+}
+
+--------------------------------------------------------------------------
+-- TRAVEL — provincial buses between cities, with surprise events on the way.
+--------------------------------------------------------------------------
+Config.Routes = {
+	{ id = "Highway", a = "BaybayAlon", b = "MetroDakila", fare = 60, tripSeconds = 90, dwellSeconds = 40, buses = 2,
+		color = C(210, 55, 50) },
+	{ id = "Bundok", a = "MetroDakila", b = "SanBukid", fare = 80, tripSeconds = 110, dwellSeconds = 40, buses = 2,
+		color = C(40, 130, 80) },
+}
+Config.TripEventRolls = { 0.35, 0.7 } -- points in the trip where each passenger may get an event
+Config.TripEventChance = 0.55
+
+-- good events scale with Swerte; bad events are likelier when Malas.
+-- pesos = {min, max}; negative = you lose money. %s in text is replaced by the amount.
+Config.TripEvents = {
+	{ id = "Barya", good = true, weight = 30, pesos = { 5, 25 }, text = "🪙 May napulot kang barya sa sahig ng bus: %s!" },
+	{ id = "Ninong", good = true, weight = 10, pesos = { 100, 300 }, text = "🎁 Nakasabay mo si Ninong Boy! Inabutan ka ng %s. \"Pang-merienda mo, inaanak!\"" },
+	{ id = "LostFound", good = true, weight = 12, pesos = { 50, 150 }, text = "👛 May naiwang pitaka sa upuan. Isinauli mo sa konduktor at binigyan ka ng pabuya na %s." },
+	{ id = "Katabi", good = true, weight = 20, effects = { Social = 20 }, text = "💬 Nakakuwentuhan mo ang katabi mo. Ang dami n'yong pagkakapareho!" },
+	{ id = "Mani", good = true, weight = 15, effects = { Hunger = 12 }, text = "🥜 Sumakay ang tindero ng mani at chicharon. Nilibre ka ng katabi mo!" },
+	{ id = "Tanawin", good = true, weight = 15, effects = { Fun = 15 }, text = "🌄 Ang ganda ng tanawin sa bintana..." },
+	{ id = "Idlip", good = true, weight = 15, effects = { Energy = 15 }, text = "😴 Nakaidlip ka sa biyahe. Ang sarap!" },
+	{ id = "Dukot", good = false, weight = 10, pesos = { -80, -20 }, text = "😱 Nadukutan ka! Nawala ang %s. Ingat sa gamit!" },
+	{ id = "Flat", good = false, weight = 12, effects = { Fun = -10 }, text = "🛞 Na-flat ang gulong ng bus. Ang tagal maghintay..." },
+	{ id = "Traffic", good = false, weight = 15, effects = { Energy = -10, Fun = -5 }, text = "🚗 Grabe ang traffic sa Dakila Avenue..." },
+	{ id = "Hilo", good = false, weight = 10, effects = { Fun = -10, Hunger = -5 }, text = "🤢 Nahilo ka sa biyahe. Sana nagdala ka ng kendi..." },
+}
+
 return Config
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX2"><Properties><string name="Name">Models</string><ProtectedString name="Source"><![CDATA[--[[
+<Item class="ModuleScript" referent="RBX3"><Properties><string name="Name">Models</string><ProtectedString name="Source"><![CDATA[--[[
 	Models — procedural builders for every 3D object in Bahay Buhay.
 	No uploaded meshes or decals are needed: everything is made from parts.
 
@@ -401,6 +634,7 @@ return Config
 
 local CollectionService = game:GetService("CollectionService")
 
+local Config = require(script.Parent.Config)
 local Util = require(script.Parent.Util)
 
 local Models = {}
@@ -1331,8 +1565,8 @@ function Builders.Shed(text: string?)
 	return m
 end
 
-function Builders.Building(width: number, depth: number, height: number, color: Color3, text: string?)
-	local m = newModel("Gusali")
+function Builders.Building(width: number, depth: number, height: number, color: Color3, text: string?, stationId: string?)
+	local m = newModel("Gusali", stationId)
 	P(m, { Size = V(width, height, depth), CFrame = CF(0, height / 2, 0), Color = color, Material = MAT.Concrete })
 	P(m, { Size = V(width + 1, 0.6, depth + 1), CFrame = CF(0, height + 0.3, 0), Color = C(120, 110, 100), Material = MAT.Concrete })
 	P(m, { Size = V(4, 7, 0.3), CFrame = CF(0, 3.5, depth / 2 + 0.1), Color = C(70, 50, 35), Material = MAT.WoodPlanks })
@@ -1342,6 +1576,10 @@ function Builders.Building(width: number, depth: number, height: number, color: 
 	if text then
 		local sign = P(m, { Size = V(width * 0.7, 2, 0.3), CFrame = CF(0, height - 1.6, depth / 2 + 0.2), Color = Palette.white })
 		Util.surfaceText(sign, Enum.NormalId.Back, text, Palette.flagBlue)
+	end
+	if stationId then
+		usePoint(m, CFrame.lookAt(V(0, 0, depth / 2 + 2.5), V(0, 0, 0)))
+		promptPart(m, CF(0, 3, depth / 2 + 1.5))
 	end
 	return m
 end
@@ -1364,81 +1602,116 @@ function Builders.Bantayog()
 	return m
 end
 
--- The player's house. Floor top is at y = 4 (local).
-function Builders.BahayKubo()
-	local m = newModel("BahayKubo")
-	local W, D, FH, WH = 30, 24, 4, 9
-	-- haligi (stilts) — the open space underneath is the "silong"
-	for _, x in { -W / 2 + 1, 0, W / 2 - 1 } do
-		for _, z in { -D / 2 + 1, 0, D / 2 - 1 } do
-			vcyl(m, x, 0, z, FH, 1.2, Palette.bambooDark)
+-- The player's house. style = "Kubo" (bamboo on stilts) or "Bungalow" (concrete, Metro style).
+-- Both share the same footprint so saved furniture fits either one.
+function Builders.House(style: string?)
+	style = style or "Kubo"
+	local isKubo = style == "Kubo"
+	local m = newModel(if isKubo then "BahayKubo" else "Bungalow")
+	local W, D = 30, 24
+	local FH = Config.HouseTypes[style].floorY
+	local WH = 9
+	local wallColor = if isKubo then Palette.sawali else C(236, 226, 200)
+	local wallMat = if isKubo then MAT.Fabric else MAT.Concrete
+
+	if isKubo then
+		-- haligi (stilts) — the open space underneath is the "silong"
+		for _, x in { -W / 2 + 1, 0, W / 2 - 1 } do
+			for _, z in { -D / 2 + 1, 0, D / 2 - 1 } do
+				vcyl(m, x, 0, z, FH, 1.2, Palette.bambooDark)
+			end
 		end
+		P(m, { Name = "Sahig", Size = V(W, 0.6, D), CFrame = CF(0, FH - 0.3, 0), Color = Palette.bamboo, Material = MAT.WoodPlanks })
+	else
+		P(m, { Name = "Sahig", Size = V(W, FH, D), CFrame = CF(0, FH / 2, 0), Color = C(200, 190, 175), Material = MAT.Concrete })
+		P(m, { Size = V(W - 1, 0.05, D - 1), CFrame = CF(0, FH + 0.02, 0), Color = C(190, 150, 110), Material = MAT.Marble })
 	end
-	P(m, { Name = "Sahig", Size = V(W, 0.6, D), CFrame = CF(0, FH - 0.3, 0), Color = Palette.bamboo, Material = MAT.WoodPlanks })
-	-- sawali walls with door and windows
-	local wc, wm = Palette.sawali, MAT.Fabric
-	wall(m, CF(0, FH, D / 2 - 0.25), W, WH, 0.5, {
-		{ c = 0, w = 5, bottom = 0, top = 7 },
-		{ c = -9, w = 5, bottom = 3, top = 6.5 },
-		{ c = 9, w = 5, bottom = 3, top = 6.5 },
-	}, wc, wm)
+
+	local front = { { c = 0, w = 5, bottom = 0, top = 7 }, { c = -9, w = 5, bottom = 3, top = 6.5 }, { c = 9, w = 5, bottom = 3, top = 6.5 } }
+	wall(m, CF(0, FH, D / 2 - 0.25), W, WH, 0.5, front, wallColor, wallMat)
 	wall(m, CF(0, FH, -D / 2 + 0.25), W, WH, 0.5, {
 		{ c = -6, w = 5, bottom = 3, top = 6.5 },
 		{ c = 6, w = 5, bottom = 3, top = 6.5 },
-	}, wc, wm)
+	}, wallColor, wallMat)
 	for _, sx in { 1, -1 } do
 		wall(m, CF(sx * (W / 2 - 0.25), FH, 0) * ANG(0, PI / 2, 0), D - 1, WH, 0.5, {
 			{ c = 0, w = 5, bottom = 3, top = 6.5 },
-		}, wc, wm)
+		}, wallColor, wallMat)
 	end
-	-- corner posts & beams
-	for _, sx in { -1, 1 } do
-		for _, sz in { -1, 1 } do
-			vcyl(m, sx * (W / 2 - 0.3), FH, sz * (D / 2 - 0.3), WH, 0.8, Palette.bambooDark)
+
+	if isKubo then
+		for _, sx in { -1, 1 } do
+			for _, sz in { -1, 1 } do
+				vcyl(m, sx * (W / 2 - 0.3), FH, sz * (D / 2 - 0.3), WH, 0.8, Palette.bambooDark)
+			end
 		end
-	end
-	-- propped-open window shutters (tukod)
-	for _, x in { -9, 9 } do
-		P(m, { Size = V(5.4, 0.2, 2.6), CFrame = CF(x, FH + 6.8, D / 2 + 1.0) * ANG(0.45, 0, 0), Color = Palette.nipa, Material = MAT.Grass })
-	end
-	gableRoof(m, CF(0, FH + WH, 0), W, D, 8, 2, Palette.nipa, MAT.Grass, true)
-	-- hagdan (front stairs) with railing
-	for i = 1, 3 do
-		local top = FH - i
-		P(m, { Size = V(5, top, 1.2), CFrame = CF(0, top / 2, D / 2 + (i - 0.5) * 1.2), Color = Palette.bamboo, Material = MAT.WoodPlanks })
-	end
-	for _, sx in { -1, 1 } do
-		vcyl(m, sx * 2.6, 0, D / 2 + 3.6, 3.5, 0.3, Palette.bambooDark)
-		P(m, {
-			Size = V(0.25, 0.25, 4.2),
-			CFrame = CF(sx * 2.6, 4.6, D / 2 + 1.8) * ANG(-0.6, 0, 0),
-			Color = Palette.bambooDark,
-			Material = MAT.Wood,
-		})
+		-- propped-open window shutters (tukod)
+		for _, x in { -9, 9 } do
+			P(m, { Size = V(5.4, 0.2, 2.6), CFrame = CF(x, FH + 6.8, D / 2 + 1.0) * ANG(0.45, 0, 0), Color = Palette.nipa, Material = MAT.Grass })
+		end
+		gableRoof(m, CF(0, FH + WH, 0), W, D, 8, 2, Palette.nipa, MAT.Grass, true)
+		-- hagdan (front stairs) with railing
+		for i = 1, 3 do
+			local top = FH - i
+			P(m, { Size = V(5, top, 1.2), CFrame = CF(0, top / 2, D / 2 + (i - 0.5) * 1.2), Color = Palette.bamboo, Material = MAT.WoodPlanks })
+		end
+		for _, sx in { -1, 1 } do
+			vcyl(m, sx * 2.6, 0, D / 2 + 3.6, 3.5, 0.3, Palette.bambooDark)
+			P(m, {
+				Size = V(0.25, 0.25, 4.2),
+				CFrame = CF(sx * 2.6, 4.6, D / 2 + 1.8) * ANG(-0.6, 0, 0),
+				Color = Palette.bambooDark,
+				Material = MAT.Wood,
+			})
+		end
+	else
+		-- painted lower band, window grills, red GI roof, front porch
+		for _, spec in { { V(W + 0.1, 1.2, 0.1), CF(0, FH + 0.6, D / 2) }, { V(W + 0.1, 1.2, 0.1), CF(0, FH + 0.6, -D / 2) } } do
+			P(m, { Size = spec[1], CFrame = spec[2], Color = C(90, 140, 160), Material = MAT.Concrete })
+		end
+		for _, x in { -9, 9 } do
+			for i = 0, 4 do
+				P(m, { Size = V(0.12, 3.5, 0.12), CFrame = CF(x - 2 + i, FH + 4.75, D / 2 + 0.1), Color = C(40, 40, 40), Material = MAT.Metal })
+			end
+		end
+		gableRoof(m, CF(0, FH + WH, 0), W, D, 4, 1.5, C(170, 60, 50), MAT.CorrodedMetal, true)
+		P(m, { Size = V(10, FH, 3), CFrame = CF(0, FH / 2, D / 2 + 1.5), Color = C(200, 190, 175), Material = MAT.Concrete })
+		P(m, { ClassName = "WedgePart", Size = V(10, 0.6, 1.5), CFrame = CF(0, FH / 2, D / 2 + 3.75) * ANG(0, PI, 0), Color = C(200, 190, 175), Material = MAT.Concrete })
 	end
 	return m
 end
 
--- A whole residential lot: plot, bamboo fence (bakod), sign, bahay kubo, tree.
-function Builders.Lot()
+function Builders.BahayKubo()
+	return Builders.House("Kubo")
+end
+
+-- A whole residential lot: plot, fence (bakod), sign, house, tree.
+function Builders.Lot(style: string?)
+	style = style or "Kubo"
+	local isKubo = style == "Kubo"
 	local m = newModel("Lot")
 	local half = 28
 	P(m, { Name = "Plot", Size = V(half * 2, 0.2, half * 2), CFrame = CF(0, -0.1, 0), Color = C(112, 168, 76), Material = MAT.Grass })
-	-- fence
+	local railColor = if isKubo then Palette.bamboo else C(220, 215, 205)
+	local postColor = if isKubo then Palette.bambooDark else C(200, 195, 185)
 	local function rail(fromV: Vector3, toV: Vector3)
 		local mid = (fromV + toV) / 2
 		for _, y in { 1.1, 2.4 } do
 			P(m, {
 				Size = V(0.25, 0.25, (toV - fromV).Magnitude),
 				CFrame = CFrame.lookAt(mid + V(0, y, 0), toV + V(0, y, 0)),
-				Color = Palette.bamboo,
-				Material = MAT.Wood,
+				Color = railColor,
+				Material = if isKubo then MAT.Wood else MAT.Concrete,
 			})
 		end
 		local steps = math.floor((toV - fromV).Magnitude / 4)
 		for i = 0, steps do
 			local p = fromV:Lerp(toV, i / math.max(steps, 1))
-			vcyl(m, p.X, 0, p.Z, 3, 0.4, Palette.bambooDark)
+			if isKubo then
+				vcyl(m, p.X, 0, p.Z, 3, 0.4, postColor)
+			else
+				P(m, { Size = V(0.6, 3, 0.6), CFrame = CF(p.X, 1.5, p.Z), Color = postColor, Material = MAT.Concrete })
+			end
 		end
 	end
 	rail(V(-half, 0, -half), V(half, 0, -half))
@@ -1446,23 +1719,225 @@ function Builders.Lot()
 	rail(V(half, 0, -half), V(half, 0, half))
 	rail(V(-half, 0, half), V(-5, 0, half))
 	rail(V(5, 0, half), V(half, 0, half))
-	-- house
-	local kubo = Builders.BahayKubo()
-	kubo:PivotTo(CF(0, 0, -8))
-	kubo.Parent = m
-	-- path from gate to stairs
-	P(m, { Size = V(4, 0.1, 12), CFrame = CF(0, 0.05, 22), Color = C(150, 120, 85), Material = MAT.Ground })
-	-- sign
+	local house = Builders.House(style)
+	house:PivotTo(CF(0, 0, -8))
+	house.Parent = m
+	P(m, { Size = V(4, 0.1, 12), CFrame = CF(0, 0.05, 22), Color = if isKubo then C(150, 120, 85) else C(170, 168, 160), Material = if isKubo then MAT.Ground else MAT.Concrete })
 	vcyl(m, 18, 0, 26, 5, 0.35, Palette.woodDark)
 	local board = P(m, { Name = "Sign", Size = V(8, 2.5, 0.3), CFrame = CF(18, 4.6, 26.2) * ANG(0, PI, 0), Color = Palette.wood, Material = MAT.WoodPlanks })
 	Util.surfaceText(board, Enum.NormalId.Front, "Bakanteng Lote", C(255, 240, 200))
-	-- trees
 	local tree = Builders.CoconutTree(math.random(1, 1000))
 	tree:PivotTo(CF(-23, 0, 22))
 	tree.Parent = m
-	local tree2 = Builders.CoconutTree(math.random(1, 1000))
-	tree2:PivotTo(CF(23, 0, -23))
-	tree2.Parent = m
+	if isKubo then
+		local tree2 = Builders.CoconutTree(math.random(1, 1000))
+		tree2:PivotTo(CF(23, 0, -23))
+		tree2.Parent = m
+	end
+	return m
+end
+
+--------------------------------------------------------------------------
+-- PHASE 0 ADDITIONS: travel, work places, metro & farm scenery
+--------------------------------------------------------------------------
+
+-- Provincial bus. Front is -Z (it drives "forward" along its LookVector). Seats are named "BusSeat".
+function Builders.Bus(color: Color3?, signText: string?)
+	local m = newModel("Bus")
+	local body = color or C(210, 55, 50)
+	local W, L = 7, 24
+	local glass = C(150, 190, 210)
+	P(m, { Name = "Floor", Size = V(W, 0.5, L), CFrame = CF(0, 1.75, 0), Color = C(60, 60, 64), Material = MAT.DiamondPlate })
+	P(m, { Name = "Chassis", Size = V(W - 0.6, 1, L - 1), CFrame = CF(0, 1, 0), Color = C(40, 40, 44), Material = MAT.Metal })
+	-- left wall (solid lower, glass upper)
+	P(m, { Size = V(0.3, 2.4, L), CFrame = CF(-W / 2 + 0.15, 3.2, 0), Color = body, Material = MAT.Metal })
+	P(m, { Size = V(0.2, 2.4, L), CFrame = CF(-W / 2 + 0.15, 5.6, 0), Color = glass, Material = MAT.Glass, Transparency = 0.55 })
+	-- right wall with a door gap at the front
+	P(m, { Size = V(0.3, 2.4, L - 3), CFrame = CF(W / 2 - 0.15, 3.2, 1.5), Color = body, Material = MAT.Metal })
+	P(m, { Size = V(0.2, 2.4, L - 3), CFrame = CF(W / 2 - 0.15, 5.6, 1.5), Color = glass, Material = MAT.Glass, Transparency = 0.55 })
+	-- white stripe both sides
+	for _, sx in { -1, 1 } do
+		P(m, { Size = V(0.35, 0.4, L), CFrame = CF(sx * (W / 2 - 0.1), 4.25, 0), Color = Palette.white, Material = MAT.SmoothPlastic, CanCollide = false })
+	end
+	-- front and back
+	P(m, { Size = V(W, 2.4, 0.3), CFrame = CF(0, 3.2, -L / 2 + 0.15), Color = body, Material = MAT.Metal })
+	P(m, { Name = "Windshield", Size = V(W - 0.4, 2.6, 0.1), CFrame = CF(0, 5.6, -L / 2 + 0.1), Color = glass, Material = MAT.Glass, Transparency = 0.5 })
+	P(m, { Size = V(W, 5, 0.3), CFrame = CF(0, 4.4, L / 2 - 0.15), Color = body, Material = MAT.Metal })
+	P(m, { Name = "Roof", Size = V(W + 0.2, 0.4, L + 0.2), CFrame = CF(0, 7.1, 0), Color = Palette.white, Material = MAT.Metal })
+	local sign = P(m, { Name = "Ruta", Size = V(5.5, 1, 0.2), CFrame = CF(0, 6.4, -L / 2 + 0.05), Color = C(30, 30, 30), Material = MAT.SmoothPlastic, CanCollide = false })
+	local label = Util.surfaceText(sign, Enum.NormalId.Front, signText or "BIYAHE", C(255, 200, 60), Enum.Font.GothamBold)
+	label.Name = "RouteLabel"
+	for _, sx in { -1, 1 } do
+		P(m, { Shape = Enum.PartType.Cylinder, Size = V(0.15, 0.8, 0.8), CFrame = CF(sx * 2.5, 2.6, -L / 2 - 0.05) * ANG(0, PI / 2, 0), Color = C(255, 250, 220), Material = MAT.Neon })
+		for _, z in { -L / 2 + 4, L / 2 - 4 } do
+			P(m, { Shape = Enum.PartType.Cylinder, Size = V(1, 2.6, 2.6), CFrame = CF(sx * (W / 2 - 0.3), 1.3, z), Color = C(25, 25, 25), Material = MAT.SmoothPlastic })
+		end
+	end
+	-- driver (decor seat + steering wheel)
+	P(m, { Size = V(1.8, 0.3, 1.8), CFrame = CF(-2, 2.6, -L / 2 + 2.5), Color = C(30, 30, 30) })
+	P(m, { Shape = Enum.PartType.Cylinder, Size = V(0.15, 1.3, 1.3), CFrame = CF(-2, 4, -L / 2 + 1.4) * ANG(0, PI / 2, 0), Color = C(20, 20, 20) })
+	-- passenger seats: 7 rows × 2 sides, facing forward (-Z)
+	for row = 0, 6 do
+		local z = -L / 2 + 6 + row * 2.6
+		for _, x in { -2, 2 } do
+			P(m, { ClassName = "Seat", Name = "BusSeat", Size = V(2.4, 0.3, 1.6), CFrame = CF(x, 2.6, z), Color = C(40, 80, 150), Material = MAT.Fabric })
+			P(m, { Size = V(2.4, 1.8, 0.25), CFrame = CF(x, 3.5, z + 0.9), Color = C(40, 80, 150), Material = MAT.Fabric })
+		end
+	end
+	promptPart(m, CF(W / 2 + 0.8, 3, -L / 2 + 1.5))
+	return m
+end
+
+function Builders.BusTerminal(text: string?)
+	local m = newModel("Terminal")
+	P(m, { Size = V(18, 0.4, 7), CFrame = CF(0, 0.2, 0), Color = C(180, 178, 170), Material = MAT.Concrete })
+	for _, x in { -8, 8 } do
+		for _, z in { -3, 3 } do
+			vcyl(m, x, 0.4, z, 7.5, 0.4, Palette.metal, MAT.Metal)
+		end
+	end
+	P(m, { Size = V(19, 0.3, 8), CFrame = CF(0, 8, 0), Color = C(30, 90, 160), Material = MAT.CorrodedMetal })
+	bench(m, CF(-4, 0.4, -1.5), 6)
+	bench(m, CF(4, 0.4, -1.5), 6)
+	local sign = P(m, { Size = V(14, 1.6, 0.2), CFrame = CF(0, 6.9, 3.6), Color = Palette.flagYellow })
+	Util.surfaceText(sign, Enum.NormalId.Back, text or "TERMINAL", Palette.flagBlue)
+	return m
+end
+
+-- Rice paddy with dikes (pilapil), rice tufts and a little farm hut. Station: Palayan.
+function Builders.Palayan(seed: number?)
+	local m = newModel("Palayan", "Palayan")
+	local rng = Random.new(seed or 1)
+	P(m, { Name = "Tubig", Size = V(24, 0.3, 16), CFrame = CF(0, 0.05, 0), Color = C(110, 120, 70), Material = MAT.Mud })
+	for _, spec in { { V(25, 0.6, 1), CF(0, 0.3, 8) }, { V(25, 0.6, 1), CF(0, 0.3, -8) }, { V(1, 0.6, 16), CF(12, 0.3, 0) }, { V(1, 0.6, 16), CF(-12, 0.3, 0) } } do
+		P(m, { Size = spec[1], CFrame = spec[2], Color = C(120, 95, 60), Material = MAT.Ground })
+	end
+	for ix = 0, 9 do
+		for iz = 0, 5 do
+			P(m, {
+				Size = V(0.5, rng:NextNumber(0.9, 1.4), 0.5),
+				CFrame = CF(-10.5 + ix * 2.33, 0.7, -6 + iz * 2.4),
+				Color = Color3.fromHSV(rng:NextNumber(0.22, 0.28), 0.7, 0.75),
+				Material = MAT.Grass,
+				CanCollide = false,
+			})
+		end
+	end
+	-- kubo-kubo (rest hut)
+	for _, x in { 13.5, 18.5 } do
+		for _, z in { 5.5, 9.5 } do
+			vcyl(m, x, 0, z, 5, 0.4, Palette.bambooDark)
+		end
+	end
+	P(m, { Size = V(6, 0.3, 5), CFrame = CF(16, 1.6, 7.5), Color = Palette.bamboo, Material = MAT.WoodPlanks })
+	gableRoof(m, CF(16, 5, 7.5), 6, 5, 2, 0.6, Palette.nipa, MAT.Grass, false)
+	usePoint(m, CFrame.lookAt(V(0, 0.6, 9.5), V(0, 0.6, 0)))
+	promptPart(m, CF(0, 2, 8.5))
+	return m
+end
+
+function Builders.Kalabaw()
+	local m = newModel("Kalabaw")
+	local gray = C(70, 70, 75)
+	P(m, { Size = V(2.4, 2.2, 5), CFrame = CF(0, 2.6, 0), Color = gray })
+	P(m, { Size = V(1.6, 1.5, 1.8), CFrame = CF(0, 3, -3.1), Color = gray })
+	P(m, { Size = V(1.2, 0.8, 0.6), CFrame = CF(0, 2.6, -4.1), Color = C(55, 55, 60) })
+	for _, sx in { -1, 1 } do
+		P(m, { Size = V(1.6, 0.3, 0.3), CFrame = CF(sx * 1.4, 4, -3.2) * ANG(0, 0, sx * -0.5), Color = C(220, 210, 190) })
+		for _, z in { -1.8, 1.8 } do
+			P(m, { Size = V(0.6, 1.6, 0.6), CFrame = CF(sx * 0.8, 0.8, z), Color = gray })
+		end
+	end
+	P(m, { Size = V(0.2, 1.4, 0.2), CFrame = CF(0, 2.6, 2.6) * ANG(0.4, 0, 0), Color = gray })
+	return m
+end
+
+function Builders.ConstructionSite()
+	local m = newModel("Construction", "Construction")
+	local block = C(150, 150, 145)
+	P(m, { Size = V(16, 0.3, 12), CFrame = CF(0, 0.15, 0), Color = C(150, 130, 100), Material = MAT.Ground })
+	for i = 0, 5 do
+		P(m, { Size = V(14, 1, 0.8), CFrame = CF(0, 0.8 + i, -4), Color = if i % 2 == 0 then block else C(160, 160, 155), Material = MAT.Concrete })
+	end
+	P(m, { Size = V(0.8, 6, 7), CFrame = CF(-7, 3.3, -0.5), Color = block, Material = MAT.Concrete })
+	-- bamboo scaffolding
+	for _, x in { -6, -2, 2, 6 } do
+		vcyl(m, x, 0.3, -2.5, 10, 0.25, Palette.bambooDark)
+	end
+	for _, y in { 3, 6, 9 } do
+		P(m, { Shape = Enum.PartType.Cylinder, Size = V(13, 0.25, 0.25), CFrame = CF(0, y, -2.5), Color = Palette.bamboo, Material = MAT.Wood })
+	end
+	-- cement mixer and sand pile
+	P(m, { Shape = Enum.PartType.Cylinder, Size = V(2.4, 2, 2), CFrame = CF(4, 2, 2.5) * ANG(0, 0, 0.5), Color = C(240, 130, 30), Material = MAT.Metal })
+	P(m, { Size = V(1.6, 1, 1.6), CFrame = CF(4, 0.8, 2.5), Color = C(60, 60, 60), Material = MAT.Metal })
+	P(m, { ClassName = "WedgePart", Size = V(3, 1.5, 2), CFrame = CF(-3, 1.05, 3), Color = C(210, 180, 120), Material = MAT.Sand })
+	P(m, { ClassName = "WedgePart", Size = V(3, 1.5, 2), CFrame = CF(-3, 1.05, 5) * ANG(0, PI, 0), Color = C(210, 180, 120), Material = MAT.Sand })
+	local sign = P(m, { Size = V(6, 2, 0.2), CFrame = CF(5, 3, 6), Color = Palette.flagYellow })
+	Util.surfaceText(sign, Enum.NormalId.Back, "MAY GINAGAWA · SAFETY FIRST", C(40, 40, 40))
+	vcyl(m, 5, 0, 5.8, 2, 0.2, Palette.metal, MAT.Metal)
+	usePoint(m, CFrame.lookAt(V(0, 0.3, 0), V(0, 0.3, -4)))
+	promptPart(m, CF(0, 2, 2))
+	return m
+end
+
+-- Office tower for the metro skyline. Optional stationId/sign makes it a workplace.
+function Builders.Tower(width: number, depth: number, floors: number, color: Color3, stationId: string?, signText: string?)
+	local m = newModel("Tower", stationId)
+	local floorH = 4
+	local height = floors * floorH
+	P(m, { Name = "Body", Size = V(width, height, depth), CFrame = CF(0, height / 2, 0), Color = color, Material = MAT.Concrete })
+	for f = 1, floors - 1 do
+		P(m, {
+			Size = V(width + 0.1, 1.8, depth + 0.1),
+			CFrame = CF(0, f * floorH + 0.4, 0),
+			Color = C(120, 170, 210),
+			Material = MAT.Glass,
+			Reflectance = 0.15,
+			CanCollide = false,
+		})
+	end
+	P(m, { Size = V(width * 0.4, 3, depth * 0.4), CFrame = CF(0, height + 1.5, 0), Color = C(170, 170, 170), Material = MAT.Concrete })
+	vcyl(m, width * 0.25, height, depth * 0.25, 3, 2, C(80, 80, 85), MAT.Metal) -- water tank
+	P(m, { Size = V(6, 3.2, 0.2), CFrame = CF(0, 1.6, depth / 2 + 0.05), Color = C(40, 50, 60), Material = MAT.Glass })
+	if signText then
+		local sign = P(m, { Size = V(math.min(width - 2, 18), 2, 0.3), CFrame = CF(0, height - 2, depth / 2 + 0.2), Color = Palette.white })
+		Util.surfaceText(sign, Enum.NormalId.Back, signText, Palette.flagBlue)
+	end
+	if stationId then
+		usePoint(m, CFrame.lookAt(V(0, 0, depth / 2 + 2.5), V(0, 0, 0)))
+		promptPart(m, CF(0, 3, depth / 2 + 1.5))
+	end
+	return m
+end
+
+-- Pier and a passenger/cargo ship. Station: Pantalan (Seaman job).
+function Builders.Pantalan()
+	local m = newModel("Pantalan", "Pantalan")
+	P(m, { Size = V(8, 0.8, 60), CFrame = CF(0, 1, -30), Color = Palette.wood, Material = MAT.WoodPlanks })
+	for z = -58, -4, 9 do
+		for _, x in { -3.5, 3.5 } do
+			vcyl(m, x, -6, z, 7.4, 0.8, Palette.woodDark)
+		end
+	end
+	local hull = C(240, 240, 240)
+	P(m, { Name = "Barko", Size = V(16, 8, 50), CFrame = CF(13, -1, -38), Color = hull, Material = MAT.Metal })
+	P(m, { Size = V(16.1, 2, 50.1), CFrame = CF(13, -4, -38), Color = Palette.flagBlue, Material = MAT.Metal })
+	P(m, { ClassName = "WedgePart", Size = V(16, 8, 10), CFrame = CF(13, -1, -68) * ANG(0, 0, PI), Color = hull, Material = MAT.Metal })
+	P(m, { Size = V(12, 6, 14), CFrame = CF(13, 6, -30), Color = hull, Material = MAT.Metal })
+	P(m, { Size = V(12.1, 1.4, 14.1), CFrame = CF(13, 7, -30), Color = C(40, 60, 80), Material = MAT.Glass })
+	vcyl(m, 13, 9, -22, 5, 3, Palette.flagRed, MAT.Metal)
+	usePoint(m, CFrame.lookAt(V(0, 1.4, -55), V(13, 1.4, -55)))
+	promptPart(m, CF(0, 3, -55))
+	return m
+end
+
+-- Distant hill scenery (ellipsoid). Non-collidable so players never snag on its box.
+function Builders.Bundok(size: Vector3, color: Color3?)
+	local m = newModel("Bundok")
+	local hill = P(m, { Size = size, CFrame = CF(0, size.Y * 0.3, 0), Color = color or C(70, 130, 60), Material = MAT.Grass, CanCollide = false, CanQuery = false })
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = hill
 	return m
 end
 
@@ -1481,7 +1956,7 @@ end
 
 return Models
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX3"><Properties><string name="Name">Util</string><ProtectedString name="Source"><![CDATA[--[[
+<Item class="ModuleScript" referent="RBX4"><Properties><string name="Name">Util</string><ProtectedString name="Source"><![CDATA[--[[
 	Util — small helpers shared by server and client.
 ]]
 
@@ -1608,7 +2083,7 @@ return Util
 ]]></ProtectedString></Properties></Item>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="RBX20"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Folder" referent="RBX19"><Properties><string name="Name">Server</string></Properties><Item class="Script" referent="RBX6"><Properties><string name="Name">Main</string><ProtectedString name="Source"><![CDATA[--[[
+<Item class="ServerScriptService" referent="RBX24"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Folder" referent="RBX23"><Properties><string name="Name">Server</string></Properties><Item class="Script" referent="RBX7"><Properties><string name="Name">Main</string><ProtectedString name="Source"><![CDATA[--[[
 	Bahay Buhay — a Filipino-themed life simulation.
 	Server entry point: builds the world and wires all services together.
 ]]
@@ -1631,35 +2106,52 @@ local DataService = require(Services.DataService)
 local TimeService = require(Services.TimeService)
 local NPCService = require(Services.NPCService)
 local WorldBuilder = require(Services.WorldBuilder)
+local TravelService = require(Services.TravelService)
+local IdentityService = require(Services.IdentityService)
+local CareerService = require(Services.CareerService)
 
 NeedsService.bind(ActionService)
 
--- 1) World
+-- 1) World (three cities in one shared map)
 StationService.init()
 WorldBuilder.build()
 LotService.init()
 NPCService.init()
 TimeService.init()
+TravelService.init()
 
 -- 2) Systems
 ActionService.init()
 NeedsService.start()
 BuildService.init()
+IdentityService.init()
+CareerService.init()
 
 --------------------------------------------------------------------------
 -- Players
 --------------------------------------------------------------------------
 local function teleportHome(player: Player)
-	local lot = LotService.get(player)
 	local character = player.Character
-	if lot and character then
-		ActionService.stop(player, "cancel")
-		character:PivotTo(LotService.spawnCFrame(lot))
+	if not character then
+		return
 	end
+	local lot = LotService.get(player)
+	local target = if lot
+		then LotService.spawnCFrame(lot)
+		else CFrame.new(Config.city(player:GetAttribute("Hometown")).spawn)
+	ActionService.stop(player, "cancel")
+	-- with StreamingEnabled, load the destination for this player before moving them there
+	pcall(function()
+		player:RequestStreamAroundAsync(target.Position, 5)
+	end)
+	character:PivotTo(target)
 end
 
 local function onCharacterAdded(player: Player, character: Model)
-	task.spawn(Overhead.attach, character)
+	task.spawn(function()
+		Overhead.attach(character)
+		Overhead.setAge(player, player:GetAttribute("Age"))
+	end)
 	local humanoid = character:WaitForChild("Humanoid", 10) :: Humanoid?
 	if humanoid then
 		humanoid.WalkSpeed = Config.WalkSpeed
@@ -1676,9 +2168,26 @@ local function onPlayerAdded(player: Player)
 	if not player.Parent then
 		return -- left while loading
 	end
-	DataService.apply(player, profile)
 
-	local lot = LotService.assign(player)
+	-- Ikot ng Kapalaran: roll a starting life once, the first time we see this player
+	local identity = IdentityService.sanitize(profile.Identity)
+	if not identity then
+		identity = IdentityService.roll()
+		profile.IdentitySeen = false
+		if isNew then
+			profile.Pesos = Config.YamanEffects.startingPesos[identity.Yaman]
+		end
+	end
+	DataService.apply(player, profile)
+	IdentityService.apply(player, identity)
+	player:GetAttributeChangedSignal("Age"):Connect(function()
+		Overhead.setAge(player, player:GetAttribute("Age"))
+	end)
+
+	local lot = LotService.assign(player, identity.Hometown)
+	if not lot then
+		player:SetAttribute("HomeCity", identity.Hometown)
+	end
 	if lot then
 		BuildService.load(player, profile.Furniture)
 	end
@@ -1696,20 +2205,19 @@ local function onPlayerAdded(player: Player)
 		if not player.Parent then
 			return
 		end
-		if isNew then
-			Remotes.notify(player, "🏠 Mabuhay! Maligayang pagdating sa Barangay Bahay Buhay!", "good")
-			Remotes.notify(player, "May " .. Util.formatPesos(Config.StartingPesos) .. " kang puhunan. Alagaan ang sarili, magtrabaho, at pagandahin ang bahay mo!", "info")
-		else
+		if player:GetAttribute("IdentitySeen") then
 			Remotes.notify(player, "🏠 Maligayang pagbabalik, " .. player.DisplayName .. "!", "good")
 		end
 		if not lot then
-			Remotes.notify(player, "Puno na ang mga lote sa barangay. Makikitira ka muna sa plaza!", "warn")
+			Remotes.notify(player, "Puno na ang mga lote sa server na ito. Makikitira ka muna sa bayan mo (boarding house: darating sa Phase 1).", "warn")
+		elseif lot.city ~= identity.Hometown then
+			Remotes.notify(player, "🏠 Puno na ang lote sa bayan mo, kaya sa " .. Config.city(lot.city).name .. " ka muna nakatira.", "info")
 		end
 	end)
 end
 
 local function savePlayer(player: Player)
-	DataService.save(player, BuildService.serialize(player))
+	DataService.save(player, BuildService.serialize(player), IdentityService.collect(player))
 end
 
 Players.PlayerAdded:Connect(onPlayerAdded)
@@ -1768,7 +2276,21 @@ TimeService.onMorning(function(day)
 		player:SetAttribute("DaysPlayed", (player:GetAttribute("DaysPlayed") or 0) + 1)
 		player:SetAttribute("EarnedToday", 0)
 
-		local bill = Config.BillBase + Config.BillPerFurniture * BuildService.count(player)
+		IdentityService.morningAllowance(player)
+
+		-- aging: one year every Config.DaysPerYear mornings you're online for
+		local ageDays = (player:GetAttribute("AgeDays") or 0) + 1
+		if ageDays >= Config.DaysPerYear then
+			ageDays = 0
+			local age = (player:GetAttribute("Age") or Config.StartAge) + 1
+			player:SetAttribute("Age", age)
+			Remotes.notify(player, string.format("🎂 Maligayang kaarawan! %d taong gulang ka na.", age), "good")
+		end
+		player:SetAttribute("AgeDays", ageDays)
+
+		local lot = LotService.get(player)
+		local costMult = Config.city(lot and lot.city).costMult
+		local bill = math.floor((Config.BillBase + Config.BillPerFurniture * BuildService.count(player)) * costMult + 0.5)
 		local pesos = player:GetAttribute("Pesos") or 0
 		local paid = math.min(bill, pesos)
 		player:SetAttribute("Pesos", pesos - paid)
@@ -1790,7 +2312,7 @@ end)
 
 print(string.format("[%s v%s] Handa na ang barangay!", Config.GameName, Config.Version))
 ]]></ProtectedString></Properties></Item>
-<Item class="Folder" referent="RBX18"><Properties><string name="Name">Services</string></Properties><Item class="ModuleScript" referent="RBX7"><Properties><string name="Name">ActionService</string><ProtectedString name="Source"><![CDATA[--[[
+<Item class="Folder" referent="RBX22"><Properties><string name="Name">Services</string></Properties><Item class="ModuleScript" referent="RBX8"><Properties><string name="Name">ActionService</string><ProtectedString name="Source"><![CDATA[--[[
 	ActionService — runs timed interactions (sleeping, cooking, working, chatting…).
 
 	Flow: StationService (prompt/menu) → ActionService.start(player, station, actionId)
@@ -1821,6 +2343,7 @@ type ActiveAction = {
 	elapsed: number,
 	paidFraction: number,
 	xpFraction: number,
+	xpMult: number,
 	seat: Seat?,
 	lying: boolean,
 	effectMult: number,
@@ -2041,6 +2564,11 @@ local function begin(player: Player, actionId: string, station: Model?): (boolea
 		return false, nil
 	end
 
+	if def.profession and player:GetAttribute("Profession") ~= def.profession then
+		local prof = Config.Professions[def.profession]
+		return false, "💼 Hindi ito ang trabaho mo. Mag-apply muna bilang " .. prof.label .. " sa PESO Office."
+	end
+
 	if def.hours and not Util.inHours(Lighting.ClockTime, def.hours) then
 		return false, string.format(
 			"⏰ Hindi pa pwede ngayon. Bukas mula %s hanggang %s.",
@@ -2056,7 +2584,8 @@ local function begin(player: Player, actionId: string, station: Model?): (boolea
 		end
 	end
 
-	local cost = def.cost or 0
+	local cityId = station and station:GetAttribute("City")
+	local cost = Config.scaledCost(def, cityId)
 	local pesos = player:GetAttribute("Pesos") or 0
 	if cost > pesos then
 		return false, "💸 Kulang ang pera mo! Kailangan mo ng " .. Util.formatPesos(cost) .. "."
@@ -2081,7 +2610,10 @@ local function begin(player: Player, actionId: string, station: Model?): (boolea
 		seat = nil,
 		lying = false,
 		effectMult = if def.skillBoost then 1 + level * Config.SkillEffectBonus else 1,
-		payMult = NeedsService.getMood(player).payMult * (if def.payBoost then 1 + level * Config.SkillPayBonus else 1),
+		payMult = NeedsService.getMood(player).payMult
+			* (if def.payBoost then 1 + level * Config.SkillPayBonus else 1)
+			* Config.city(cityId).payMult,
+		xpMult = Config.xpMultiplier(player, def.skill),
 	}
 	active[player] = state
 
@@ -2153,7 +2685,7 @@ local function step(player: Player, state: ActiveAction, dt: number)
 	end
 
 	if def.skill and def.skillXp then
-		state.xpFraction += def.skillXp * frac
+		state.xpFraction += def.skillXp * frac * state.xpMult
 		if state.xpFraction >= 1 then
 			local whole = math.floor(state.xpFraction)
 			state.xpFraction -= whole
@@ -2191,7 +2723,7 @@ end
 
 return ActionService
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX8"><Properties><string name="Name">BuildService</string><ProtectedString name="Source"><![CDATA[--[[
+<Item class="ModuleScript" referent="RBX9"><Properties><string name="Name">BuildService</string><ProtectedString name="Source"><![CDATA[--[[
 	BuildService — buying, placing and selling furniture on your own lot.
 	The client sends lot-relative coordinates; the server validates everything
 	(ownership, bounds, money, limits) before spawning the model.
@@ -2222,6 +2754,7 @@ function BuildService.spawn(lot, id: string, x: number, y: number, z: number, ro
 		model:SetAttribute("OwnerUserId", lot.owner.UserId)
 	end
 	model:SetAttribute("DisplayName", Config.FurnitureById[id].name)
+	model:SetAttribute("City", lot.city)
 	model:PivotTo(lot.origin * CFrame.new(x, y, z) * CFrame.Angles(0, math.rad(rotation), 0))
 	model.Parent = lot.furniture
 	StationService.make(model)
@@ -2229,6 +2762,8 @@ function BuildService.spawn(lot, id: string, x: number, y: number, z: number, ro
 end
 
 -- Furniture → plain table for saving (lot-relative, so it loads on any lot).
+-- Items inside the house store `fy` (height above the house floor) so they still sit
+-- correctly if the player later gets a lot with a different house type.
 function BuildService.serialize(player: Player): { any }
 	local lot = LotService.get(player)
 	local list = {}
@@ -2240,17 +2775,24 @@ function BuildService.serialize(player: Player): { any }
 		if id and model:IsA("Model") then
 			local rel = lot.origin:ToObjectSpace(model:GetPivot())
 			local _, ry, _ = rel:ToOrientation()
-			table.insert(list, {
+			local entry = {
 				id = id,
 				x = math.floor(rel.X * 100 + 0.5) / 100,
-				y = math.floor(rel.Y * 100 + 0.5) / 100,
 				z = math.floor(rel.Z * 100 + 0.5) / 100,
 				r = (math.floor(math.deg(ry) / 90 + 0.5) * 90) % 360,
-			})
+			}
+			if Config.insideHouse(rel.X, rel.Z) then
+				entry.fy = math.floor((rel.Y - lot.floorY) * 100 + 0.5) / 100
+			else
+				entry.y = math.floor(rel.Y * 100 + 0.5) / 100
+			end
+			table.insert(list, entry)
 		end
 	end
 	return list
 end
+
+local LEGACY_FLOOR_Y = 4 -- v0.1 saves were all bahay kubo
 
 function BuildService.load(player: Player, furniture: { any }?)
 	local lot = LotService.get(player)
@@ -2259,7 +2801,20 @@ function BuildService.load(player: Player, furniture: { any }?)
 	end
 	lot.furniture:ClearAllChildren()
 	for _, item in furniture or Config.StarterFurniture do
-		BuildService.spawn(lot, item.id, item.x, item.y, item.z, item.r or 0)
+		if type(item) ~= "table" or type(item.x) ~= "number" or type(item.z) ~= "number" then
+			continue
+		end
+		local y
+		if type(item.fy) == "number" then
+			y = lot.floorY + item.fy
+		elseif item.inHouse then
+			y = lot.floorY + (item.y or 0)
+		elseif type(item.y) == "number" and Config.insideHouse(item.x, item.z) then
+			y = lot.floorY + (item.y - LEGACY_FLOOR_Y)
+		else
+			y = item.y or 0
+		end
+		BuildService.spawn(lot, item.id, item.x, y, item.z, item.r or 0)
 	end
 end
 
@@ -2329,7 +2884,62 @@ end
 
 return BuildService
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX9"><Properties><string name="Name">DataService</string><ProtectedString name="Source"><![CDATA[--[[
+<Item class="ModuleScript" referent="RBX10"><Properties><string name="Name">CareerService</string><ProtectedString name="Source"><![CDATA[--[[
+	CareerService — the PESO (Public Employment Service Office) job board.
+	Players pick one of the 10 professions; education gates some of them.
+	A profession's job can only be done in the cities listed for it, so where
+	you live vs. where you work becomes a real decision (commute or move).
+]]
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(script.Parent.Remotes)
+
+local CareerService = {}
+
+local lastChange: { [Player]: number } = {}
+local CHANGE_COOLDOWN = 30
+
+function CareerService.init()
+	Remotes.ChooseProfession.OnServerEvent:Connect(function(player, professionId)
+		local prof = type(professionId) == "string" and Config.Professions[professionId]
+		if not prof then
+			return
+		end
+		if player:GetAttribute("Profession") == professionId then
+			Remotes.notify(player, "Ito na ang trabaho mo ngayon.", "info")
+			return
+		end
+		if not Config.meetsEducation(player:GetAttribute("Education"), prof.education) then
+			local need = Config.Education[prof.education]
+			Remotes.notify(player, "🔒 Kailangan mo ng " .. (need and need.label or prof.education) .. " para maging " .. prof.label .. ".", "warn")
+			return
+		end
+		local now = os.clock()
+		if lastChange[player] and now - lastChange[player] < CHANGE_COOLDOWN then
+			Remotes.notify(player, "Kakapalit mo lang ng trabaho. Sandali lang.", "warn")
+			return
+		end
+		lastChange[player] = now
+		player:SetAttribute("Profession", professionId)
+
+		local places = {}
+		for _, cityId in prof.cities do
+			table.insert(places, Config.city(cityId).name)
+		end
+		Remotes.notify(player, string.format("%s Natanggap ka bilang %s! Pwede kang magtrabaho sa: %s.",
+			prof.icon, prof.label, table.concat(places, ", ")), "good")
+	end)
+
+	game:GetService("Players").PlayerRemoving:Connect(function(player)
+		lastChange[player] = nil
+	end)
+end
+
+return CareerService
+]]></ProtectedString></Properties></Item>
+<Item class="ModuleScript" referent="RBX11"><Properties><string name="Name">DataService</string><ProtectedString name="Source"><![CDATA[--[[
 	DataService — loads and saves player progress with DataStoreService.
 
 	Saved: pesos, needs, skills, relationships, furniture layout.
@@ -2369,8 +2979,14 @@ function DataService.defaultProfile()
 		needs[id] = 85
 	end
 	return {
-		Version = 1,
+		Version = 2,
 		Pesos = Config.StartingPesos,
+		Identity = nil, -- rolled by IdentityService on first join
+		IdentitySeen = false,
+		Age = Config.StartAge,
+		AgeDays = 0,
+		Education = Config.StartEducation,
+		Profession = nil,
 		Needs = needs,
 		Skills = {},
 		Relationships = {},
@@ -2415,6 +3031,12 @@ function DataService.load(player: Player)
 		profile.Skills = if type(data.Skills) == "table" then data.Skills else {}
 		profile.Relationships = if type(data.Relationships) == "table" then data.Relationships else {}
 		profile.Furniture = if type(data.Furniture) == "table" then data.Furniture else nil
+		profile.Identity = if type(data.Identity) == "table" then data.Identity else nil
+		profile.IdentitySeen = data.IdentitySeen == true
+		profile.Age = tonumber(data.Age) or Config.StartAge
+		profile.AgeDays = tonumber(data.AgeDays) or 0
+		profile.Education = if Config.Education[data.Education] then data.Education else Config.StartEducation
+		profile.Profession = if Config.Professions[data.Profession] then data.Profession else nil
 	end
 	return profile, isNew
 end
@@ -2423,6 +3045,11 @@ end
 function DataService.apply(player: Player, profile)
 	player:SetAttribute("Pesos", profile.Pesos)
 	player:SetAttribute("DaysPlayed", profile.DaysPlayed)
+	player:SetAttribute("IdentitySeen", profile.IdentitySeen)
+	player:SetAttribute("Age", profile.Age)
+	player:SetAttribute("AgeDays", profile.AgeDays)
+	player:SetAttribute("Education", profile.Education)
+	player:SetAttribute("Profession", profile.Profession)
 	for _, id in Config.NeedOrder do
 		player:SetAttribute("Need_" .. id, profile.Needs[id])
 	end
@@ -2434,8 +3061,14 @@ function DataService.apply(player: Player, profile)
 	end
 end
 
-function DataService.collect(player: Player, furniture: { any })
+function DataService.collect(player: Player, furniture: { any }, identity: any)
 	local profile = DataService.defaultProfile()
+	profile.Identity = identity
+	profile.IdentitySeen = player:GetAttribute("IdentitySeen") == true
+	profile.Age = player:GetAttribute("Age") or Config.StartAge
+	profile.AgeDays = player:GetAttribute("AgeDays") or 0
+	profile.Education = player:GetAttribute("Education") or Config.StartEducation
+	profile.Profession = player:GetAttribute("Profession")
 	profile.Pesos = player:GetAttribute("Pesos") or 0
 	profile.DaysPlayed = player:GetAttribute("DaysPlayed") or 0
 	for _, id in Config.NeedOrder do
@@ -2451,11 +3084,11 @@ function DataService.collect(player: Player, furniture: { any })
 	return profile
 end
 
-function DataService.save(player: Player, furniture: { any })
+function DataService.save(player: Player, furniture: { any }, identity: any)
 	if not store or not canSave[player] or not player:GetAttribute("Loaded") then
 		return
 	end
-	local profile = DataService.collect(player, furniture)
+	local profile = DataService.collect(player, furniture, identity)
 	local ok, err = pcall(function()
 		store:UpdateAsync(key(player), function()
 			return profile
@@ -2472,12 +3105,147 @@ end
 
 return DataService
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX10"><Properties><string name="Name">LotService</string><ProtectedString name="Source"><![CDATA[--[[
-	LotService — six residential lots (with a bahay kubo each) around the plaza.
-	Each joining player is given a free lot; it is cleared when they leave.
+<Item class="ModuleScript" referent="RBX12"><Properties><string name="Name">IdentityService</string><ProtectedString name="Source"><![CDATA[--[[
+	IdentityService — "Ikot ng Kapalaran". Rolls a new player's starting life:
+	hometown, Yaman (wealth), Swerte (luck), DNA (talent), a natural talent skill,
+	and their parents' jobs (derived from hometown + Yaman, never shown as characters).
+
+	The roll happens on the server once and is saved, so rejoining never re-rolls.
+	The client only animates the reveal of the result.
+]]
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Util = require(ReplicatedStorage.Shared.Util)
+local Remotes = require(script.Parent.Remotes)
+
+local IdentityService = {}
+
+local rng = Random.new()
+
+local function weightedPick(entries: { any }, weightOf: (any) -> number): number
+	local total = 0
+	for _, e in entries do
+		total += weightOf(e)
+	end
+	local roll = rng:NextNumber() * total
+	for i, e in entries do
+		roll -= weightOf(e)
+		if roll <= 0 then
+			return i
+		end
+	end
+	return #entries
+end
+
+function IdentityService.roll()
+	local cityIndex = weightedPick(Config.CityOrder, function(id)
+		return Config.Cities[id].weight
+	end)
+	local hometown = Config.CityOrder[cityIndex]
+	local identity = { Hometown = hometown }
+	for _, metric in Config.MetricOrder do
+		identity[metric] = weightedPick(Config.Metrics[metric].tiers, function(t)
+			return t.weight
+		end)
+	end
+	identity.Talent = Config.SkillOrder[rng:NextInteger(1, #Config.SkillOrder)]
+	local pair = Config.ParentJobs[hometown][identity.Yaman]
+	if rng:NextNumber() < 0.5 then
+		identity.Papa, identity.Mama = pair[1], pair[2]
+	else
+		identity.Papa, identity.Mama = pair[2], pair[1]
+	end
+	return identity
+end
+
+-- Validates a saved identity table; returns nil if anything is off (so we re-roll).
+function IdentityService.sanitize(data: any)
+	if type(data) ~= "table" or not Config.Cities[data.Hometown] then
+		return nil
+	end
+	for _, metric in Config.MetricOrder do
+		local tier = data[metric]
+		if type(tier) ~= "number" or tier < 1 or tier > 3 then
+			return nil
+		end
+	end
+	if not Config.Skills[data.Talent] or not Config.Professions[data.Papa] or not Config.Professions[data.Mama] then
+		return nil
+	end
+	return data
+end
+
+function IdentityService.apply(player: Player, identity)
+	player:SetAttribute("Hometown", identity.Hometown)
+	for _, metric in Config.MetricOrder do
+		player:SetAttribute(metric, identity[metric])
+	end
+	player:SetAttribute("Talent", identity.Talent)
+	player:SetAttribute("Papa", identity.Papa)
+	player:SetAttribute("Mama", identity.Mama)
+end
+
+function IdentityService.collect(player: Player)
+	local identity = { Hometown = player:GetAttribute("Hometown") }
+	for _, metric in Config.MetricOrder do
+		identity[metric] = player:GetAttribute(metric)
+	end
+	identity.Talent = player:GetAttribute("Talent")
+	identity.Papa = player:GetAttribute("Papa")
+	identity.Mama = player:GetAttribute("Mama")
+	return IdentityService.sanitize(identity)
+end
+
+-- Story messages from the (unseen) parents right after the reveal.
+local function introStory(player: Player)
+	local yaman = player:GetAttribute("Yaman") or 2
+	local city = Config.city(player:GetAttribute("Hometown"))
+	local papa = Config.Professions[player:GetAttribute("Papa")]
+	local mama = Config.Professions[player:GetAttribute("Mama")]
+	Remotes.notify(player, string.format("%s Ipinanganak ka sa %s. Si Papa ay %s, si Mama ay %s.",
+		city.icon, city.name, papa.label:lower(), mama.label:lower()), "info")
+	task.wait(3)
+	Remotes.notify(player, Config.ParentIntro[yaman], "info")
+	task.wait(3)
+	if not player:GetAttribute("Profession") then
+		Remotes.notify(player, "💼 Wala ka pang trabaho. Pumunta sa PESO Office para mag-apply!", "warn")
+	end
+end
+
+-- Morning "padala" from parents, scaled by Yaman.
+function IdentityService.morningAllowance(player: Player)
+	local yaman = player:GetAttribute("Yaman") or 2
+	local amount = Config.YamanEffects.dailyAllowance[yaman] or 0
+	if amount > 0 then
+		player:SetAttribute("Pesos", (player:GetAttribute("Pesos") or 0) + amount)
+		local who = if math.random() < 0.5 then "Papa" else "Mama"
+		Remotes.notify(player, string.format("📱 %s: Nagpadala ako ng %s pang-gastos mo. Ingat, anak!", who, Util.formatPesos(amount)), "good")
+	elseif math.random() < 0.35 then
+		Remotes.notify(player, "📱 Mama: Anak, kumusta ka na? Pasensya na at wala kaming maipadala ngayon.", "info")
+	end
+end
+
+function IdentityService.init()
+	Remotes.IdentitySeen.OnServerEvent:Connect(function(player)
+		if player:GetAttribute("IdentitySeen") then
+			return
+		end
+		player:SetAttribute("IdentitySeen", true)
+		task.spawn(introStory, player)
+	end)
+end
+
+return IdentityService
+]]></ProtectedString></Properties></Item>
+<Item class="ModuleScript" referent="RBX13"><Properties><string name="Name">LotService</string><ProtectedString name="Source"><![CDATA[--[[
+	LotService — residential lots in each of the three cities.
+	Baybay Alon and San Bukid lots have a bahay kubo; Metro Dakila lots have a concrete bungalow.
+	A joining player gets a free lot in their hometown if possible, otherwise any free lot.
 
 	Lot model layout (in workspace.Lots):
-	  LotN (Model, attribute OwnerUserId)
+	  <City>Lot<N> (Model, attributes OwnerUserId, City, LotIndex)
 	    ├─ Origin    invisible part; its CFrame is the lot's coordinate frame (+Z faces the road)
 	    ├─ Furniture folder of placed furniture models
 	    └─ … plot, fence, house, sign
@@ -2485,6 +3253,7 @@ return DataService
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Config = require(ReplicatedStorage.Shared.Config)
 local Models = require(ReplicatedStorage.Shared.Models)
 local Util = require(ReplicatedStorage.Shared.Util)
 
@@ -2492,6 +3261,8 @@ local LotService = {}
 
 export type Lot = {
 	index: number,
+	city: string,
+	floorY: number,
 	origin: CFrame,
 	model: Model,
 	furniture: Folder,
@@ -2500,8 +3271,8 @@ export type Lot = {
 
 local lots: { Lot } = {}
 
--- Lot centres and the direction toward the road they face.
-local LOT_LAYOUT = {
+-- Lot centres relative to each city's origin, and the direction toward the road.
+local LOT_OFFSETS = {
 	{ pos = Vector3.new(-60, 0.2, 115), toRoad = Vector3.new(0, 0, -1) },
 	{ pos = Vector3.new(0, 0.2, 115), toRoad = Vector3.new(0, 0, -1) },
 	{ pos = Vector3.new(60, 0.2, 115), toRoad = Vector3.new(0, 0, -1) },
@@ -2523,41 +3294,68 @@ function LotService.init()
 	folder.Name = "Lots"
 	folder.Parent = workspace
 
-	for index, layout in LOT_LAYOUT do
-		-- lookAt makes -Z face the target; we want +Z to face the road.
-		local origin = CFrame.lookAt(layout.pos, layout.pos - layout.toRoad)
-		local model = Models.build("Lot")
-		model.Name = "Lot" .. index
-		model:PivotTo(origin)
+	for _, cityId in Config.CityOrder do
+		local city = Config.Cities[cityId]
+		local style = city.house
+		for n, layout in LOT_OFFSETS do
+			local pos = city.origin + layout.pos
+			-- lookAt makes -Z face the target; we want +Z to face the road.
+			local origin = CFrame.lookAt(pos, pos - layout.toRoad)
+			local model = Models.build("Lot", style)
+			model.Name = cityId .. "Lot" .. n
+			model:PivotTo(origin)
 
-		Util.part({
-			Name = "Origin",
-			Size = Vector3.new(1, 1, 1),
-			CFrame = origin,
-			Transparency = 1,
-			CanCollide = false,
-			CanTouch = false,
-			CanQuery = false,
-			Parent = model,
-		})
-		local furniture = Instance.new("Folder")
-		furniture.Name = "Furniture"
-		furniture.Parent = model
+			Util.part({
+				Name = "Origin",
+				Size = Vector3.new(1, 1, 1),
+				CFrame = origin,
+				Transparency = 1,
+				CanCollide = false,
+				CanTouch = false,
+				CanQuery = false,
+				Parent = model,
+			})
+			local furniture = Instance.new("Folder")
+			furniture.Name = "Furniture"
+			furniture.Parent = model
 
-		model:SetAttribute("LotIndex", index)
-		model.Parent = folder
+			local index = #lots + 1
+			model:SetAttribute("LotIndex", index)
+			model:SetAttribute("City", cityId)
+			model.Parent = folder
 
-		lots[index] = { index = index, origin = origin, model = model, furniture = furniture, owner = nil }
+			lots[index] = {
+				index = index,
+				city = cityId,
+				floorY = Config.HouseTypes[style].floorY,
+				origin = origin,
+				model = model,
+				furniture = furniture,
+				owner = nil,
+			}
+		end
 	end
 end
 
-function LotService.assign(player: Player): Lot?
+local function claim(lot: Lot, player: Player)
+	lot.owner = player
+	lot.model:SetAttribute("OwnerUserId", player.UserId)
+	player:SetAttribute("LotIndex", lot.index)
+	player:SetAttribute("HomeCity", lot.city)
+	setSign(lot, "Bahay ni " .. player.DisplayName)
+end
+
+-- Prefer a lot in `preferredCity`; fall back to any free lot.
+function LotService.assign(player: Player, preferredCity: string?): Lot?
+	for _, lot in lots do
+		if lot.owner == nil and lot.city == preferredCity then
+			claim(lot, player)
+			return lot
+		end
+	end
 	for _, lot in lots do
 		if lot.owner == nil then
-			lot.owner = player
-			lot.model:SetAttribute("OwnerUserId", player.UserId)
-			player:SetAttribute("LotIndex", lot.index)
-			setSign(lot, "Bahay ni " .. player.DisplayName)
+			claim(lot, player)
 			return lot
 		end
 	end
@@ -2595,7 +3393,7 @@ end
 
 return LotService
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX11"><Properties><string name="Name">NPCService</string><ProtectedString name="Source"><![CDATA[--[[
+<Item class="ModuleScript" referent="RBX14"><Properties><string name="Name">NPCService</string><ProtectedString name="Source"><![CDATA[--[[
 	NPCService — the neighbours (mga kapitbahay) who wander the barangay.
 	Talk to them to raise Pakikisama and build a relationship.
 ]]
@@ -2830,7 +3628,7 @@ end
 
 return NPCService
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX12"><Properties><string name="Name">NeedsService</string><ProtectedString name="Source"><![CDATA[--[[
+<Item class="ModuleScript" referent="RBX15"><Properties><string name="Name">NeedsService</string><ProtectedString name="Source"><![CDATA[--[[
 	NeedsService — needs decay over time, mood, low-need warnings and consequences.
 	Needs are stored as player attributes ("Need_Hunger" …) so the client UI can read them directly.
 ]]
@@ -2890,7 +3688,9 @@ local function applyConsequences(player: Player)
 	local currentId = actions and actions.currentActionId(player)
 
 	-- Bagsak sa pagod: fall asleep on the spot
-	if NeedsService.get(player, "Energy") <= 0 and not busy and actions then
+	local seated = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	seated = seated and seated.SeatPart ~= nil
+	if NeedsService.get(player, "Energy") <= 0 and not busy and not seated and actions then
 		Remotes.notify(player, "😵 Bumagsak ka sa sobrang pagod! Nakatulog ka sa sahig.", "bad")
 		actions.startSpecial(player, "Nahimatay")
 	end
@@ -2919,7 +3719,11 @@ function NeedsService.tick(dt: number)
 		end
 		for _, id in Config.NeedOrder do
 			if not (actions and actions.isBoosting(player, id)) then
-				NeedsService.add(player, id, -Config.Needs[id].decayPerMinute / 60 * dt)
+				local mult = 1
+				if id == "Social" then
+					mult = Config.YamanEffects.socialDecayMult[player:GetAttribute("Yaman") or 2] or 1
+				end
+				NeedsService.add(player, id, -Config.Needs[id].decayPerMinute / 60 * dt * mult)
 			end
 		end
 		local mood = NeedsService.getMood(player)
@@ -2947,7 +3751,7 @@ end
 
 return NeedsService
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX13"><Properties><string name="Name">Overhead</string><ProtectedString name="Source"><![CDATA[--[[
+<Item class="ModuleScript" referent="RBX16"><Properties><string name="Name">Overhead</string><ProtectedString name="Source"><![CDATA[--[[
 	Overhead — the floating parol (star) above each player that shows their mood,
 	plus the emoji thought bubble that shows what they're doing.
 ]]
@@ -2997,7 +3801,30 @@ function Overhead.attach(character: Model)
 	corner.CornerRadius = UDim.new(1, 0)
 	corner.Parent = bubble
 
+	-- Age is the only identity detail other players can see.
+	local age = Instance.new("TextLabel")
+	age.Name = "Age"
+	age.Size = UDim2.fromScale(1.4, 0.45)
+	age.Position = UDim2.fromScale(-0.2, 1.0)
+	age.BackgroundTransparency = 1
+	age.Text = ""
+	age.TextScaled = true
+	age.Font = Enum.Font.GothamBold
+	age.TextColor3 = Color3.fromRGB(255, 255, 255)
+	age.TextStrokeTransparency = 0.3
+	age.Parent = gui
+
 	gui.Parent = head
+end
+
+function Overhead.setAge(player: Player, years: number?)
+	local character = player.Character
+	local head = character and character:FindFirstChild("Head")
+	local gui = head and head:FindFirstChild("Overhead")
+	local label = gui and gui:FindFirstChild("Age") :: TextLabel?
+	if label then
+		label.Text = if years then string.format("%d taong gulang", years) else ""
+	end
 end
 
 local function getGui(player: Player): BillboardGui?
@@ -3024,7 +3851,7 @@ end
 
 return Overhead
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX14"><Properties><string name="Name">Remotes</string><ProtectedString name="Source"><![CDATA[--[[
+<Item class="ModuleScript" referent="RBX17"><Properties><string name="Name">Remotes</string><ProtectedString name="Source"><![CDATA[--[[
 	Remotes — creates every RemoteEvent / RemoteFunction the game uses.
 	The client waits for ReplicatedStorage.Remotes.
 ]]
@@ -3039,6 +3866,9 @@ local EVENTS = {
 	"CancelAction", -- client → server ()
 	"Notify", -- server → client (text, kind)
 	"GoHome", -- client → server ()
+	"OpenCareer", -- server → client () — PESO office job board
+	"ChooseProfession", -- client → server (professionId)
+	"IdentitySeen", -- client → server () — finished watching the spin wheel
 }
 local FUNCTIONS = {
 	"PlaceFurniture", -- (id, x, y, z, rotation) → ok, message
@@ -3074,7 +3904,7 @@ end
 
 return Remotes
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX15"><Properties><string name="Name">StationService</string><ProtectedString name="Source"><![CDATA[--[[
+<Item class="ModuleScript" referent="RBX18"><Properties><string name="Name">StationService</string><ProtectedString name="Source"><![CDATA[--[[
 	StationService — turns every Model tagged "Station" into something interactive.
 	A ProximityPrompt is added; triggering it either starts the single action or
 	opens a choice menu on the client (e.g. the sari-sari store's list of snacks).
@@ -3106,7 +3936,7 @@ local function register(model: Instance)
 	end
 	local stationId = model:GetAttribute("StationId")
 	local cfg = stationId and Config.Stations[stationId]
-	if not cfg or #cfg.actions == 0 then
+	if not cfg or (#cfg.actions == 0 and not cfg.special) then
 		return
 	end
 	local parent = promptParent(model)
@@ -3126,7 +3956,9 @@ local function register(model: Instance)
 	prompt.Parent = parent
 
 	prompt.Triggered:Connect(function(player)
-		if #cfg.actions == 1 then
+		if cfg.special == "Career" then
+			Remotes.OpenCareer:FireClient(player)
+		elseif #cfg.actions == 1 then
 			ActionService.start(player, model, cfg.actions[1])
 		else
 			Remotes.OpenMenu:FireClient(player, model, stationId)
@@ -3176,7 +4008,7 @@ end
 
 return StationService
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX16"><Properties><string name="Name">TimeService</string><ProtectedString name="Source"><![CDATA[--[[
+<Item class="ModuleScript" referent="RBX19"><Properties><string name="Name">TimeService</string><ProtectedString name="Source"><![CDATA[--[[
 	TimeService — day/night cycle. One in-game day lasts Config.DayLengthMinutes.
 	Switches on lamps and parols at night and fires onMorning callbacks at 6 AM.
 ]]
@@ -3248,8 +4080,308 @@ end
 
 return TimeService
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX17"><Properties><string name="Name">WorldBuilder</string><ProtectedString name="Source"><![CDATA[--[[
-	WorldBuilder — builds Barangay Bahay Buhay at server start.
+<Item class="ModuleScript" referent="RBX20"><Properties><string name="Name">TravelService</string><ProtectedString name="Source"><![CDATA[--[[
+	TravelService — provincial buses connecting the three cities in the shared world.
+
+	Each route has buses that shuttle between two terminals on a schedule:
+	  boarding (dwell) → fare collected at departure → drive the road → arrive → repeat.
+	Passengers sit together (they can chat!) and may get surprise trip events,
+	weighted by their Swerte (luck): coins, a generous ninong, a pickpocket...
+	Press Space (jump) to get off.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Models = require(ReplicatedStorage.Shared.Models)
+local Util = require(ReplicatedStorage.Shared.Util)
+local Remotes = require(script.Parent.Remotes)
+local NeedsService = require(script.Parent.NeedsService)
+local ActionService = require(script.Parent.ActionService)
+
+local TravelService = {}
+
+local LANE_OFFSET = 5
+local routePoints: { [string]: { Vector3 } } = {}
+local folder: Folder
+local rng = Random.new()
+
+type Path = { points: { Vector3 }, cumulative: { number }, total: number }
+
+--------------------------------------------------------------------------
+-- Path helpers
+--------------------------------------------------------------------------
+local function laneOf(points: { Vector3 }, offset: number): { Vector3 }
+	local out = {}
+	for i, p in points do
+		local a = points[math.max(1, i - 1)]
+		local b = points[math.min(#points, i + 1)]
+		local dir = Vector3.new(b.X - a.X, 0, b.Z - a.Z)
+		if dir.Magnitude < 1e-3 then
+			dir = Vector3.new(1, 0, 0)
+		end
+		local right = dir.Unit:Cross(Vector3.yAxis)
+		out[i] = p + right * offset
+	end
+	return out
+end
+
+local function reversed(points: { Vector3 }): { Vector3 }
+	local out = {}
+	for i = #points, 1, -1 do
+		table.insert(out, points[i])
+	end
+	return out
+end
+
+local function makePath(points: { Vector3 }): Path
+	local cumulative = { 0 }
+	for i = 2, #points do
+		cumulative[i] = cumulative[i - 1] + (points[i] - points[i - 1]).Magnitude
+	end
+	return { points = points, cumulative = cumulative, total = cumulative[#points] }
+end
+
+local function sample(path: Path, distance: number): (Vector3, Vector3)
+	local pts, cum = path.points, path.cumulative
+	distance = math.clamp(distance, 0, path.total)
+	for i = 2, #pts do
+		if distance <= cum[i] or i == #pts then
+			local segLen = cum[i] - cum[i - 1]
+			local t = if segLen > 0 then (distance - cum[i - 1]) / segLen else 0
+			local dir = pts[i] - pts[i - 1]
+			return pts[i - 1]:Lerp(pts[i], t), if dir.Magnitude > 0 then dir.Unit else Vector3.new(1, 0, 0)
+		end
+	end
+	return pts[#pts], Vector3.new(1, 0, 0)
+end
+
+local function flatLook(pos: Vector3, dir: Vector3): CFrame
+	-- keep the bus level-ish on slopes: only pitch slightly with the road
+	return CFrame.lookAt(pos, pos + dir)
+end
+
+--------------------------------------------------------------------------
+-- Passengers
+--------------------------------------------------------------------------
+local function occupantPlayer(seat: Seat): Player?
+	local humanoid = seat.Occupant
+	return humanoid and Players:GetPlayerFromCharacter(humanoid.Parent) or nil
+end
+
+local function unseat(seat: Seat)
+	local humanoid = seat.Occupant
+	local weld = seat:FindFirstChild("SeatWeld")
+	if weld then
+		weld:Destroy()
+	end
+	if humanoid then
+		humanoid.Sit = false
+		humanoid.Jump = true
+	end
+end
+
+local function pickEvent(player: Player)
+	local swerte = player:GetAttribute("Swerte") or 2
+	local goodMult = Config.SwerteEffects.goodEventMult[swerte] or 1
+	local badMult = Config.SwerteEffects.badEventMult[swerte] or 1
+	local total = 0
+	for _, e in Config.TripEvents do
+		total += e.weight * (if e.good then goodMult else badMult)
+	end
+	local roll = rng:NextNumber() * total
+	for _, e in Config.TripEvents do
+		roll -= e.weight * (if e.good then goodMult else badMult)
+		if roll <= 0 then
+			return e
+		end
+	end
+	return Config.TripEvents[1]
+end
+
+local function applyEvent(player: Player, event)
+	local text = event.text
+	if event.pesos then
+		local amount = rng:NextInteger(event.pesos[1], event.pesos[2])
+		local pesos = player:GetAttribute("Pesos") or 0
+		if amount < 0 then
+			amount = -math.min(-amount, pesos)
+			if amount == 0 then
+				-- nothing to steal: turn it into a near-miss
+				Remotes.notify(player, "😅 Muntik ka nang madukutan, pero wala ka namang pera. Haha!", "info")
+				return
+			end
+		end
+		player:SetAttribute("Pesos", pesos + amount)
+		text = string.format(text, Util.formatPesos(math.abs(amount)))
+	end
+	if event.effects then
+		for need, delta in event.effects do
+			NeedsService.add(player, need, delta)
+		end
+	end
+	Remotes.notify(player, text, if event.good then "good" else "bad")
+end
+
+--------------------------------------------------------------------------
+-- Bus loop
+--------------------------------------------------------------------------
+local function runBus(cfg, points: { Vector3 }, index: number)
+	local forward = makePath(laneOf(points, LANE_OFFSET))
+	local backward = makePath(laneOf(reversed(points), LANE_OFFSET))
+
+	local bus = Models.build("Bus", cfg.color, "")
+	bus.Name = cfg.id .. "Bus" .. index
+	bus.Parent = folder
+	local seats: { Seat } = {}
+	for _, d in bus:GetDescendants() do
+		if d:IsA("Seat") and d.Name == "BusSeat" then
+			table.insert(seats, d)
+		end
+	end
+	local routeLabel = bus:FindFirstChild("RouteLabel", true) :: TextLabel?
+	local promptPart = bus:FindFirstChild("PromptPart", true) :: BasePart
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Sumakay"
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 12
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = promptPart
+
+	local atA = index % 2 == 1
+	local moving = false
+	local destination = cfg.b
+
+	prompt.Triggered:Connect(function(player)
+		if moving then
+			Remotes.notify(player, "🚌 Umaandar na ang bus. Hintayin ang susunod na biyahe.", "warn")
+			return
+		end
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if not humanoid or humanoid.Health <= 0 or humanoid.SeatPart then
+			return
+		end
+		for _, seat in seats do
+			if not seat.Occupant then
+				ActionService.stop(player, "cancel")
+				seat:Sit(humanoid)
+				local city = Config.city(destination)
+				Remotes.notify(player, string.format("🚌 Sumakay ka sa bus papuntang %s %s. Pamasahe: %s (babayaran pag-alis). Space para bumaba.",
+					city.icon, city.name, Util.formatPesos(cfg.fare)), "info")
+				return
+			end
+		end
+		Remotes.notify(player, "Puno na ang bus! Hintayin ang susunod.", "warn")
+	end)
+
+	while bus.Parent do
+		local path = if atA then forward else backward
+		destination = if atA then cfg.b else cfg.a
+		local destCity = Config.city(destination)
+		if routeLabel then
+			routeLabel.Text = "→ " .. destCity.name:upper()
+		end
+		prompt.ObjectText = string.format("Bus papuntang %s (%s)", destCity.name, Util.formatPesos(cfg.fare))
+		prompt.Enabled = true
+
+		-- park at the terminal facing the way we'll leave
+		local startPos, startDir = sample(path, 0)
+		bus:PivotTo(flatLook(startPos, startDir))
+		moving = false
+		task.wait(cfg.dwellSeconds)
+
+		-- collect fares
+		moving = true
+		prompt.Enabled = false
+		local riders: { [Player]: boolean } = {}
+		for _, seat in seats do
+			local player = occupantPlayer(seat)
+			if player then
+				local pesos = player:GetAttribute("Pesos") or 0
+				if pesos >= cfg.fare then
+					player:SetAttribute("Pesos", pesos - cfg.fare)
+					riders[player] = true
+					Remotes.notify(player, "🎫 Nagbayad ka ng " .. Util.formatPesos(cfg.fare) .. ". Aalis na ang bus!", "info")
+				else
+					unseat(seat)
+					Remotes.notify(player, "💸 Kulang ang pamasahe mo. Pinababa ka ng konduktor.", "bad")
+				end
+			end
+		end
+
+		-- drive
+		local elapsed = 0
+		local nextRoll = 1
+		while elapsed < cfg.tripSeconds and bus.Parent do
+			local dt = RunService.Heartbeat:Wait()
+			elapsed += dt
+			local pos, dir = sample(path, elapsed / cfg.tripSeconds * path.total)
+			local current = bus:GetPivot()
+			local target = flatLook(pos, dir)
+			local rotation = current.Rotation:Lerp(target.Rotation, math.min(1, dt * 3))
+			bus:PivotTo(CFrame.new(pos) * rotation)
+
+			local threshold = Config.TripEventRolls[nextRoll]
+			if threshold and elapsed / cfg.tripSeconds >= threshold then
+				nextRoll += 1
+				for _, seat in seats do
+					local player = occupantPlayer(seat)
+					if player and riders[player] and rng:NextNumber() < Config.TripEventChance then
+						applyEvent(player, pickEvent(player))
+					end
+				end
+			end
+		end
+
+		-- arrive
+		for _, seat in seats do
+			local player = occupantPlayer(seat)
+			if player and riders[player] then
+				Remotes.notify(player, string.format("📍 Nakarating ka na sa %s %s! Pindutin ang Space para bumaba.",
+					destCity.icon, destCity.name), "good")
+			end
+		end
+		atA = not atA
+	end
+end
+
+--------------------------------------------------------------------------
+-- Public API
+--------------------------------------------------------------------------
+
+-- Called by WorldBuilder with the road's centre-line points (terminal A → terminal B).
+function TravelService.addRoute(routeId: string, points: { Vector3 })
+	routePoints[routeId] = points
+end
+
+function TravelService.init()
+	folder = Instance.new("Folder")
+	folder.Name = "Buses"
+	folder.Parent = workspace
+	for _, cfg in Config.Routes do
+		local points = routePoints[cfg.id]
+		if points then
+			for i = 1, cfg.buses do
+				task.spawn(runBus, cfg, points, i)
+			end
+		else
+			warn("[Bahay Buhay] No road built for route " .. cfg.id)
+		end
+	end
+end
+
+return TravelService
+]]></ProtectedString></Properties></Item>
+<Item class="ModuleScript" referent="RBX21"><Properties><string name="Name">WorldBuilder</string><ProtectedString name="Source"><![CDATA[--[[
+	WorldBuilder — builds the shared world at server start: three cities in ONE map.
+
+	   Baybay Alon (x≈0) ══ highway ══ Metro Dakila (x≈3000) ══ mountain road ══ San Bukid (x≈6000, up on a plateau)
+
+	Baybay Alon close-up (top view, +X east, +Z north):
 
 	Map (top view, +X east, +Z north):
 
@@ -3265,9 +4397,11 @@ return TimeService
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Config = require(ReplicatedStorage.Shared.Config)
 local Models = require(ReplicatedStorage.Shared.Models)
 local Util = require(ReplicatedStorage.Shared.Util)
 local StationService = require(script.Parent.StationService)
+local TravelService = require(script.Parent.TravelService)
 
 local WorldBuilder = {}
 
@@ -3276,7 +4410,16 @@ local V = Vector3.new
 local CF = CFrame.new
 local MAT = Enum.Material
 
-local world: Folder
+local root: Folder
+local world: Folder -- folder of the city currently being built
+local currentCity = "BaybayAlon"
+
+local function beginCity(cityId: string)
+	currentCity = cityId
+	world = Instance.new("Folder")
+	world.Name = cityId
+	world.Parent = root
+end
 
 local function part(props)
 	props.Parent = props.Parent or world
@@ -3284,9 +4427,11 @@ local function part(props)
 end
 
 -- Build a model, place it, and make it interactive if it's a station.
+-- Every model remembers which city it's in (prices and pay depend on it).
 local function place(id: string, cf: CFrame, ...): Model
 	local model = Models.build(id, ...)
 	model:PivotTo(cf)
+	model:SetAttribute("City", currentCity)
 	model.Parent = world
 	if model:GetAttribute("StationId") then
 		StationService.make(model)
@@ -3509,10 +4654,231 @@ local function buildSpawn()
 	spawn.Parent = world
 end
 
+
+--------------------------------------------------------------------------
+-- Shared helpers for roads between cities
+--------------------------------------------------------------------------
+local function strip(a: Vector3, b: Vector3, width: number, thickness: number, color: Color3, material: Enum.Material, name: string?)
+	local mid = (a + b) / 2
+	local len = (b - a).Magnitude
+	return part({
+		Name = name,
+		Size = V(width, thickness, len + 0.5),
+		CFrame = CFrame.lookAt(mid, b) * CF(0, -thickness / 2, 0),
+		Color = color,
+		Material = material,
+	})
+end
+
+local function disc(p: Vector3, diameter: number, thickness: number, color: Color3, material: Enum.Material)
+	part({
+		Shape = Enum.PartType.Cylinder,
+		Size = V(thickness, diameter, diameter),
+		CFrame = CF(p - V(0, thickness / 2, 0)) * CFrame.Angles(0, 0, math.pi / 2),
+		Color = color,
+		Material = material,
+	})
+end
+
+-- Road surface (top at the given points), dashed centre line, and a wide strip of ground under it.
+local function roadPath(points: { Vector3 }, width: number, groundWidth: number, groundColor: Color3)
+	local asphalt = C(60, 60, 64)
+	for i = 1, #points - 1 do
+		local a, b = points[i], points[i + 1]
+		strip(a - V(0, 0.2, 0), b - V(0, 0.2, 0), groundWidth, 2, groundColor, MAT.Grass)
+		strip(a, b, width, 0.2, asphalt, MAT.Asphalt, "Kalsada")
+		local len = (b - a).Magnitude
+		local frame = CFrame.lookAt(a, b)
+		for d = 6, len - 6, 14 do
+			part({ Size = V(0.4, 0.02, 5), CFrame = frame * CF(0, 0.01, -d), Color = C(250, 220, 80), Material = MAT.SmoothPlastic, CanCollide = false })
+		end
+		if i > 1 then
+			disc(a - V(0, 0.2, 0), groundWidth, 2, groundColor, MAT.Grass)
+			disc(a, width, 0.2, asphalt, MAT.Asphalt)
+		end
+	end
+end
+
+-- Welcome arch over the road, facing +X or -X travellers.
+local function arch(pos: Vector3, text: string, color: Color3)
+	for _, z in { -14, 14 } do
+		part({ Size = V(2.5, 14, 2.5), CFrame = CF(pos + V(0, 7, z)), Color = color, Material = MAT.Concrete })
+	end
+	local beam = part({ Size = V(2, 4, 31), CFrame = CF(pos + V(0, 15, 0)), Color = color, Material = MAT.Concrete })
+	Util.surfaceText(beam, Enum.NormalId.Left, text, C(255, 245, 220))
+	Util.surfaceText(beam, Enum.NormalId.Right, text, C(255, 245, 220))
+end
+
+local function facingRoad(pos: Vector3, roadZ: number): CFrame
+	return Util.facing(pos, V(pos.X, pos.Y, roadZ))
+end
+
+--------------------------------------------------------------------------
+-- Baybay Alon additions (Phase 0): jobs, terminal, pier
+--------------------------------------------------------------------------
+local function buildBaybayExtras()
+	place("BusTerminal", facingRoad(V(195, 0.2, 20), 0), "TERMINAL · BIYAHENG METRO DAKILA")
+	place("Building", Util.facing(V(112, 0.2, -62), V(112, 0.2, 0)), 18, 12, 8, C(220, 230, 240), "PESO OFFICE", "PESO")
+	place("Building", facingRoad(V(95, 0.2, 32), 0), 16, 12, 7, C(245, 245, 245), "RURAL HEALTH UNIT", "RHU")
+	place("Building", facingRoad(V(145, 0.2, 30), 0), 18, 12, 8, C(250, 230, 150), "PAARALANG BAYBAY ALON", "Paaralan")
+	place("ConstructionSite", facingRoad(V(170, 0.2, -40), 0))
+	place("Palayan", facingRoad(V(225, 0.2, -45), 0), 11)
+	place("Kalabaw", CF(240, 0.2, -66) * CFrame.Angles(0, 0.8, 0))
+	place("Pantalan", CF(-150, 0.2, -90) * CFrame.Angles(0, math.pi / 2, 0))
+	arch(V(260, 0.2, 0), "BAYBAY ALON · MAGANDANG BIYAHE!", C(40, 110, 170))
+end
+
+--------------------------------------------------------------------------
+-- Highway: Baybay Alon ⇄ Metro Dakila
+--------------------------------------------------------------------------
+local HIGHWAY = {
+	V(190, 0.2, 0), V(900, 0.2, 0), V(1150, 0.2, 70), V(1750, 0.2, 70), V(2000, 0.2, 0), V(2790, 0.2, 0),
+}
+local MOUNTAIN = {
+	V(3210, 0.2, 0), V(3300, 0.2, 0), V(3700, 4.2, 0), V(4100, 12.2, 90), V(4600, 24.2, 90),
+	V(5000, 32.2, -60), V(5450, 40.2, -60), V(5700, 40.2, 0), V(5790, 40.2, 0),
+}
+
+local function buildHighway()
+	local grass = C(98, 160, 72)
+	roadPath({ V(150, 0.2, 0), table.unpack(HIGHWAY) }, 22, 180, grass)
+	local rng = Random.new(5)
+	for i = 1, #HIGHWAY - 1 do
+		local a, b = HIGHWAY[i], HIGHWAY[i + 1]
+		local len = (b - a).Magnitude
+		local side = CFrame.lookAt(a, b)
+		for d = 60, len - 40, 110 do
+			local sx = if rng:NextNumber() < 0.5 then -1 else 1
+			local pos = (side * CF(sx * rng:NextNumber(30, 70), 0, -d)).Position
+			place("CoconutTree", CF(V(pos.X, a.Y, pos.Z)), rng:NextInteger(1, 9999))
+		end
+		for d = 100, len - 50, 220 do
+			local pos = (side * CF(14, 0, -d)).Position
+			place("StreetLamp", Util.facing(V(pos.X, a.Y, pos.Z), (side * CF(0, 0, -d)).Position))
+		end
+	end
+	for i, x in { 600, 1450, 2300 } do
+		place("Bundok", CF(x, 0, if i % 2 == 0 then 260 else -240), V(320, 90, 220), C(80, 140, 70))
+	end
+	TravelService.addRoute("Highway", HIGHWAY)
+end
+
+local function buildMountainRoad()
+	roadPath(MOUNTAIN, 18, 160, C(90, 150, 70))
+	local rng = Random.new(9)
+	for i = 1, #MOUNTAIN - 1 do
+		local a, b = MOUNTAIN[i], MOUNTAIN[i + 1]
+		local len = (b - a).Magnitude
+		local frame = CFrame.lookAt(a, b)
+		for d = 80, len - 60, 160 do
+			local sx = if rng:NextNumber() < 0.5 then -1 else 1
+			local pos = (frame * CF(sx * rng:NextNumber(30, 60), 0, -d)).Position
+			place("CoconutTree", CF(pos - V(0, 0.2, 0)), rng:NextInteger(1, 9999))
+		end
+	end
+	for i, x in { 3600, 4100, 4600, 5100, 5500 } do
+		local h = 120 + i * 25
+		place("Bundok", CF(x, 0, 230 + i * 10), V(360, h, 260), C(60, 120, 60))
+		place("Bundok", CF(x + 150, 0, -250 - i * 8), V(340, h * 0.9, 240), C(70, 130, 65))
+	end
+	TravelService.addRoute("Bundok", MOUNTAIN)
+end
+
+--------------------------------------------------------------------------
+-- Metro Dakila
+--------------------------------------------------------------------------
+local function buildMetro()
+	local O = Config.Cities.MetroDakila.origin
+	local function at(x, y, z)
+		return O + V(x, y, z)
+	end
+	part({ Name = "Semento", Size = V(470, 2, 600), CFrame = CF(at(0, -1, 0)), Color = C(150, 150, 145), Material = MAT.Pavement })
+	road(CF(at(0, 0.1, 0)), V(470, 0.2, 24), false)
+	arch(at(-232, 0, 0), "MALIGAYANG PAGDATING SA METRO DAKILA", C(170, 40, 50))
+
+	place("BusTerminal", facingRoad(at(-205, 0.2, -20), O.Z), "TERMINAL · BIYAHENG BAYBAY ALON")
+	place("BusTerminal", facingRoad(at(205, 0.2, 20), O.Z), "TERMINAL · BIYAHENG SAN BUKID")
+
+	-- north side (face the avenue)
+	place("Building", facingRoad(at(-150, 0.2, 48), O.Z), 30, 20, 16, C(245, 245, 245), "DAKILA GENERAL HOSPITAL", "Ospital")
+	place("Building", facingRoad(at(-30, 0.2, 48), O.Z), 26, 22, 14, C(230, 200, 160), "DAKILA MALL")
+	place("Tower", facingRoad(at(30, 0.2, 48), O.Z), 24, 20, 12, C(90, 100, 120), "BPO", "DAKILATECH SOLUTIONS")
+	place("Building", facingRoad(at(120, 0.2, 48), O.Z), 36, 22, 14, C(200, 170, 130), "PAMANTASAN NG DAKILA")
+	-- south side
+	place("Building", facingRoad(at(-150, 0.2, -48), O.Z), 20, 14, 9, C(220, 230, 240), "PESO OFFICE", "PESO")
+	place("ConstructionSite", facingRoad(at(-30, 0.2, -48), O.Z))
+	place("Palengke", facingRoad(at(30, 0.2, -40), O.Z), 7)
+	place("SariSari", facingRoad(at(100, 0.2, -45), O.Z))
+	place("Karinderya", facingRoad(at(168, 0.2, -42), O.Z))
+	place("Jeepney", CF(at(-100, 0.2, -18)) * CFrame.Angles(0, math.pi / 2, 0), "AVENIDA - PALENGKE")
+
+	-- skyline
+	local rng = Random.new(21)
+	for _, spot in { { -200, 120 }, { 200, 120 }, { -200, -120 }, { 200, -120 }, { -120, 205 }, { 0, 215 }, { 120, 205 }, { -120, -205 }, { 0, -215 }, { 120, -205 } } do
+		local pos = at(spot[1], 0.2, spot[2])
+		place("Tower", facingRoad(pos, O.Z), rng:NextInteger(20, 30), rng:NextInteger(18, 26), rng:NextInteger(8, 22),
+			Color3.fromHSV(rng:NextNumber(0.5, 0.65), rng:NextNumber(0.05, 0.25), rng:NextNumber(0.55, 0.85)))
+	end
+	for x = -180, 180, 60 do
+		for _, z in { -14, 14 } do
+			place("StreetLamp", facingRoad(at(x + (if z > 0 then 30 else 0), 0.2, z), O.Z))
+		end
+	end
+end
+
+--------------------------------------------------------------------------
+-- San Bukid (on a plateau, y = 40)
+--------------------------------------------------------------------------
+local function buildBukid()
+	local O = Config.Cities.SanBukid.origin
+	local function at(x, y, z)
+		return O + V(x, y, z)
+	end
+	part({ Name = "Lupa", Size = V(470, 2, 600), CFrame = CF(at(0, -1, 0)), Color = C(104, 165, 70), Material = MAT.Grass })
+	road(CF(at(0, 0.1, 0)), V(470, 0.2, 16), false)
+	arch(at(-232, 0, 0), "MALIGAYANG PAGDATING SA SAN BUKID", C(60, 120, 60))
+	place("BusTerminal", facingRoad(at(-205, 0.2, -20), O.Z), "TERMINAL · BIYAHENG METRO DAKILA")
+
+	-- north side
+	place("Simbahan", facingRoad(at(-160, 0, 40), O.Z))
+	place("Building", facingRoad(at(-40, 0.2, 45), O.Z), 16, 12, 7, C(245, 245, 245), "RURAL HEALTH UNIT", "RHU")
+	place("Building", facingRoad(at(30, 0.2, 48), O.Z), 26, 16, 8, C(250, 230, 150), "PAARALANG SAN BUKID", "Paaralan")
+	place("Building", facingRoad(at(120, 0.2, 45), O.Z), 16, 12, 7, C(220, 230, 240), "PESO OFFICE", "PESO")
+	place("SariSari", facingRoad(at(180, 0.2, 42), O.Z))
+	-- south side: rice fields and work
+	for i, x in { -150, -110, 110, 150 } do
+		place("Palayan", facingRoad(at(x, 0.2, -50), O.Z), 30 + i)
+	end
+	place("Palengke", facingRoad(at(-25, 0.2, -42), O.Z), 3)
+	place("ConstructionSite", facingRoad(at(35, 0.2, -50), O.Z))
+	place("Jeepney", CF(at(-80, 0.2, 12)) * CFrame.Angles(0, math.pi / 2, 0), "SAN BUKID - BAYAN")
+	place("Kalabaw", CF(at(-130, 0, -76)) * CFrame.Angles(0, 0.4, 0))
+	place("Kalabaw", CF(at(125, 0, -78)) * CFrame.Angles(0, -1.1, 0))
+
+	local rng = Random.new(33)
+	for _ = 1, 14 do
+		local x, z = rng:NextNumber(-220, 220), rng:NextNumber(-280, 280)
+		if math.abs(z) > 150 or math.abs(x) > 200 then
+			place("CoconutTree", CF(at(x, 0, z)), rng:NextInteger(1, 9999))
+		end
+	end
+	for _, spot in { { -150, 300 }, { 120, 320 }, { -60, -320 }, { 170, -300 } } do
+		place("Bundok", CF(at(spot[1], 0, spot[2])), V(300, 140, 200), C(60, 125, 60))
+	end
+	local tops = {}
+	for i, x in { -40, 40 } do
+		local lamp = place("StreetLamp", facingRoad(at(x, 0.2, if i == 1 then -11 else 11), O.Z))
+		tops[i] = (lamp:FindFirstChild("Top") :: BasePart).Position
+	end
+	local flags = Models.build("Banderitas", tops[1], tops[2], 3, 77)
+	flags.Parent = world
+end
+
 function WorldBuilder.build()
-	world = Instance.new("Folder")
-	world.Name = "Barangay"
-	world.Parent = workspace
+	root = Instance.new("Folder")
+	root.Name = "Kapuluan"
+	root.Parent = workspace
+	beginCity("BaybayAlon")
 
 	-- remove the default baseplate from a fresh template, if any
 	local baseplate = workspace:FindFirstChild("Baseplate")
@@ -3527,6 +4893,16 @@ function WorldBuilder.build()
 	buildEastSide()
 	buildBeach()
 	buildSpawn()
+	buildBaybayExtras()
+
+	beginCity("Highway")
+	buildHighway()
+	beginCity("MetroDakila")
+	buildMetro()
+	beginCity("Bundok")
+	buildMountainRoad()
+	beginCity("SanBukid")
+	buildBukid()
 end
 
 return WorldBuilder
@@ -3534,7 +4910,7 @@ return WorldBuilder
 </Item>
 </Item>
 </Item>
-<Item class="StarterPlayer" referent="RBX29"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX28"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="Folder" referent="RBX27"><Properties><string name="Name">Client</string></Properties><Item class="ModuleScript" referent="RBX21"><Properties><string name="Name">BuildMode</string><ProtectedString name="Source"><![CDATA[--[[
+<Item class="StarterPlayer" referent="RBX34"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX33"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="Folder" referent="RBX32"><Properties><string name="Name">Client</string></Properties><Item class="ModuleScript" referent="RBX25"><Properties><string name="Name">BuildMode</string><ProtectedString name="Source"><![CDATA[--[[
 	BuildMode — "Gawa" mode for buying and arranging furniture on your lot.
 
 	  Click a catalog card → a ghost preview follows your mouse (green = OK, red = not allowed)
@@ -3666,7 +5042,12 @@ local function update()
 		pending = nil
 		return
 	end
-	local origin = (lot:FindFirstChild("Origin") :: BasePart).CFrame
+	local originPart = lot:FindFirstChild("Origin") :: BasePart?
+	if not originPart then
+		pending = nil -- not streamed in yet
+		return
+	end
+	local origin = originPart.CFrame
 	local rel = origin:PointToObjectSpace(result.Position)
 	local x = math.floor(rel.X * 2 + 0.5) / 2
 	local z = math.floor(rel.Z * 2 + 0.5) / 2
@@ -3879,7 +5260,7 @@ end
 
 return BuildMode
 ]]></ProtectedString></Properties></Item>
-<Item class="LocalScript" referent="RBX22"><Properties><string name="Name">Main</string><ProtectedString name="Source"><![CDATA[--[[
+<Item class="LocalScript" referent="RBX26"><Properties><string name="Name">Main</string><ProtectedString name="Source"><![CDATA[--[[
 	Bahay Buhay — client entry point.
 	Builds the HUD, menus and build mode, and cancels actions when the player moves.
 ]]
@@ -3896,6 +5277,7 @@ local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 local HUD = require(script.Parent.UI.HUD)
 local Menus = require(script.Parent.UI.Menus)
 local BuildMode = require(script.Parent:WaitForChild("BuildMode"))
+local SpinWheel = require(script.Parent.UI:WaitForChild("SpinWheel"))
 
 -- wait for the server to finish loading our save
 if not player:GetAttribute("Loaded") then
@@ -3928,7 +5310,7 @@ end)
 local buttons = Theme.create("Frame", {
 	Name = "Buttons",
 	BackgroundTransparency = 1,
-	Size = UDim2.fromOffset(90, 4 * 74),
+	Size = UDim2.fromOffset(90, 5 * 74),
 	AnchorPoint = Vector2.new(1, 0.5),
 	Position = UDim2.new(1, -12, 0.5, 0),
 	Parent = gui,
@@ -3969,6 +5351,16 @@ end)
 sideButton(4, "❤️", "Relasyon", function()
 	Menus.toggle("relationships")
 end)
+sideButton(5, "🪪", "Ako", function()
+	Menus.toggle("identity")
+end)
+
+-- First time here? Spin the wheel of fate.
+if not player:GetAttribute("IdentitySeen") then
+	SpinWheel.show(gui, function()
+		Remotes.IdentitySeen:FireServer()
+	end)
+end
 
 --------------------------------------------------------------------------
 -- Moving or jumping cancels the current action (works on keyboard, gamepad and touch)
@@ -4008,7 +5400,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	end
 end)
 ]]></ProtectedString></Properties></Item>
-<Item class="Folder" referent="RBX26"><Properties><string name="Name">UI</string></Properties><Item class="ModuleScript" referent="RBX23"><Properties><string name="Name">HUD</string><ProtectedString name="Source"><![CDATA[--[[
+<Item class="Folder" referent="RBX31"><Properties><string name="Name">UI</string></Properties><Item class="ModuleScript" referent="RBX27"><Properties><string name="Name">HUD</string><ProtectedString name="Source"><![CDATA[--[[
 	HUD — always-on screen elements:
 	  • top-left: pesos, day & clock, mood
 	  • bottom-left: the six need bars
@@ -4036,6 +5428,7 @@ local needValues: { [string]: TextLabel } = {}
 local pesosLabel: TextLabel
 local clockLabel: TextLabel
 local moodLabel: TextLabel
+local lifeLabel: TextLabel
 local actionFrame: Frame
 local actionLabel: TextLabel
 local actionFill: Frame
@@ -4043,7 +5436,7 @@ local actionFill: Frame
 local function buildStatusCard(gui: ScreenGui)
 	local card = Theme.panel({
 		Name = "Status",
-		Size = UDim2.fromOffset(270, 104),
+		Size = UDim2.fromOffset(270, 126),
 		Position = UDim2.fromOffset(12, 12),
 		Parent = gui,
 	})
@@ -4079,6 +5472,14 @@ local function buildStatusCard(gui: ScreenGui)
 		TextSize = 15,
 		Size = UDim2.new(1, -24, 0, 18),
 		Position = UDim2.fromOffset(12, 80),
+		Parent = card,
+	})
+	lifeLabel = Theme.label({
+		Text = "",
+		TextSize = 13,
+		TextColor3 = Theme.textDim,
+		Size = UDim2.new(1, -24, 0, 18),
+		Position = UDim2.fromOffset(12, 100),
 		Parent = card,
 	})
 end
@@ -4191,6 +5592,14 @@ local function refreshNeeds()
 	moodLabel.TextColor3 = mood.color
 end
 
+local function refreshLife()
+	local prof = Config.Professions[player:GetAttribute("Profession")]
+	lifeLabel.Text = string.format("🎂 %s taon  ·  🏠 %s  ·  💼 %s",
+		tostring(player:GetAttribute("Age") or "?"),
+		Config.city(player:GetAttribute("HomeCity")).name,
+		if prof then prof.label else "Walang trabaho")
+end
+
 local function refreshAction()
 	local verb = player:GetAttribute("CurrentAction")
 	actionFrame.Visible = verb ~= nil
@@ -4255,8 +5664,11 @@ function HUD.init(gui: ScreenGui, onCancel: () -> ())
 			pesosLabel.Text = Util.formatPesos(player:GetAttribute("Pesos"))
 		elseif name == "CurrentAction" or name == "ActionProgress" then
 			refreshAction()
+		elseif name == "Age" or name == "HomeCity" or name == "Profession" then
+			refreshLife()
 		end
 	end)
+	refreshLife()
 	refreshNeeds()
 	refreshAction()
 	pesosLabel.Text = Util.formatPesos(player:GetAttribute("Pesos"))
@@ -4273,7 +5685,7 @@ end
 
 return HUD
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX24"><Properties><string name="Name">Menus</string><ProtectedString name="Source"><![CDATA[--[[
+<Item class="ModuleScript" referent="RBX28"><Properties><string name="Name">Menus</string><ProtectedString name="Source"><![CDATA[--[[
 	Menus — the station choice menu ("Ano ang gagawin mo?") and the
 	Kasanayan (skills) and Relasyon (relationships) panels.
 ]]
@@ -4348,18 +5760,23 @@ function Menus.openStation(model: Model, stationId: string)
 	})
 
 	local pesos = player:GetAttribute("Pesos") or 0
+	local cityId = model:GetAttribute("City")
 	for i, actionId in cfg.actions do
 		local def = Config.Actions[actionId]
+		local cost = Config.scaledCost(def, cityId)
 		local price = ""
-		if def.cost and def.cost > 0 then
-			price = "  ·  " .. Util.formatPesos(def.cost)
+		if cost > 0 then
+			price = "  ·  " .. Util.formatPesos(cost)
 		elseif def.pay then
-			price = "  ·  Sweldo ~" .. Util.formatPesos(def.pay)
+			price = "  ·  Sweldo ~" .. Util.formatPesos(def.pay * Config.city(cityId).payMult)
+		end
+		if def.profession and player:GetAttribute("Profession") ~= def.profession then
+			price ..= "  ·  🔒 " .. Config.Professions[def.profession].label
 		end
 		local hours = if def.hours
 			then string.format("  ·  %s–%s", Util.formatHour(def.hours[1]), Util.formatHour(def.hours[2]))
 			else ""
-		local affordable = (def.cost or 0) <= pesos
+		local affordable = cost <= pesos
 		local button = Theme.button({
 			Text = "",
 			Size = UDim2.new(1, -24, 0, rowHeight - 8),
@@ -4496,6 +5913,61 @@ local function renderRelationships()
 	return panel
 end
 
+-- "Ako" — your own private identity. Nobody else can see this (only your age is public).
+local function renderIdentity()
+	local rows = {
+		{ "📍 Bayang sinilangan", Config.city(player:GetAttribute("Hometown")).name },
+		{ "🏠 Tirahan", Config.city(player:GetAttribute("HomeCity")).name },
+		{ "🎂 Edad", tostring(player:GetAttribute("Age") or "?") .. " taong gulang" },
+	}
+	for _, metric in Config.MetricOrder do
+		local m = Config.Metrics[metric]
+		table.insert(rows, { m.icon .. " " .. m.label, Config.tierLabel(metric, player:GetAttribute(metric)) })
+	end
+	local talent = Config.Skills[player:GetAttribute("Talent")]
+	table.insert(rows, { "✨ Likas na galing", if talent then talent.icon .. " " .. talent.label else "?" })
+	local papa = Config.Professions[player:GetAttribute("Papa")]
+	local mama = Config.Professions[player:GetAttribute("Mama")]
+	table.insert(rows, { "👨 Papa", if papa then papa.label else "?" })
+	table.insert(rows, { "👩 Mama", if mama then mama.label else "?" })
+	local edu = Config.Education[player:GetAttribute("Education") or "none"]
+	table.insert(rows, { "🎓 Edukasyon", if edu then edu.label else "?" })
+	local prof = Config.Professions[player:GetAttribute("Profession")]
+	table.insert(rows, { "💼 Trabaho", if prof then prof.icon .. " " .. prof.label else "Wala pa" })
+
+	local panel = Theme.panel({
+		Name = "SidePanel",
+		Size = UDim2.fromOffset(340, 60 + #rows * 28 + 30),
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -110, 0.5, 0),
+		Parent = gui,
+	})
+	Theme.label({
+		Text = "🪪 Ako",
+		Font = Theme.fontTitle,
+		TextSize = 20,
+		TextColor3 = Theme.yellow,
+		Size = UDim2.new(1, -24, 0, 26),
+		Position = UDim2.fromOffset(12, 10),
+		Parent = panel,
+	})
+	for i, row in rows do
+		local y = 44 + (i - 1) * 28
+		Theme.label({ Text = row[1], TextSize = 14, TextColor3 = Theme.textDim, Size = UDim2.new(0.5, -12, 0, 24), Position = UDim2.fromOffset(12, y), Parent = panel })
+		Theme.label({ Text = row[2], Font = Theme.fontBold, TextSize = 14, Size = UDim2.new(0.5, -12, 0, 24), Position = UDim2.new(0.5, 0, 0, y), Parent = panel })
+	end
+	Theme.label({
+		Text = "🔒 Ikaw lang ang nakakakita nito. Edad lang ang nakikita ng iba.",
+		TextSize = 12,
+		TextColor3 = Theme.textDim,
+		TextWrapped = true,
+		Size = UDim2.new(1, -24, 0, 26),
+		Position = UDim2.new(0, 12, 1, -32),
+		Parent = panel,
+	})
+	return panel
+end
+
 function Menus.toggle(kind: string)
 	if sidePanelKind == kind then
 		closeSide()
@@ -4503,11 +5975,117 @@ function Menus.toggle(kind: string)
 	end
 	closeSide()
 	sidePanelKind = kind
-	sidePanel = if kind == "skills" then renderSkills() else renderRelationships()
+	sidePanel = if kind == "skills"
+		then renderSkills()
+		elseif kind == "identity" then renderIdentity()
+		else renderRelationships()
+end
+
+--------------------------------------------------------------------------
+-- PESO job board
+--------------------------------------------------------------------------
+function Menus.openCareer()
+	closeStation()
+	local rowHeight = 50
+	local panel = Theme.panel({
+		Name = "CareerMenu",
+		Size = UDim2.fromOffset(560, 70 + rowHeight * #Config.ProfessionOrder + 54),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Parent = gui,
+	})
+	local uiScale = create("UIScale", {})
+	uiScale.Parent = panel
+	local view = workspace.CurrentCamera.ViewportSize
+	uiScale.Scale = math.clamp(math.min((view.X - 24) / 560, (view.Y - 24) / panel.Size.Y.Offset), 0.45, 1)
+	stationPanel = panel
+
+	Theme.label({
+		Text = "💼 PESO — Public Employment Service Office",
+		Font = Theme.fontTitle,
+		TextSize = 20,
+		TextColor3 = Theme.yellow,
+		Size = UDim2.new(1, -24, 0, 28),
+		Position = UDim2.fromOffset(12, 10),
+		Parent = panel,
+	})
+	local edu = Config.Education[player:GetAttribute("Education") or "none"]
+	Theme.label({
+		Text = "Edukasyon mo: " .. (if edu then edu.label else "?") .. "  ·  Pumili ng trabaho. Sa mga nakalistang bayan lang ito pwedeng gawin.",
+		TextSize = 13,
+		TextColor3 = Theme.textDim,
+		TextWrapped = true,
+		Size = UDim2.new(1, -24, 0, 30),
+		Position = UDim2.fromOffset(12, 38),
+		Parent = panel,
+	})
+	local current = player:GetAttribute("Profession")
+	for i, id in Config.ProfessionOrder do
+		local prof = Config.Professions[id]
+		local job = Config.Actions[prof.job]
+		local unlocked = Config.meetsEducation(player:GetAttribute("Education"), prof.education)
+		local icons = {}
+		for _, cityId in prof.cities do
+			table.insert(icons, Config.city(cityId).icon)
+		end
+		local button = Theme.button({
+			Text = "",
+			Size = UDim2.new(1, -24, 0, rowHeight - 6),
+			Position = UDim2.fromOffset(12, 70 + (i - 1) * rowHeight),
+			BackgroundColor3 = if id == current then Color3.fromRGB(40, 110, 60)
+				elseif unlocked then Theme.bgLight
+				else Color3.fromRGB(60, 45, 45),
+			Parent = panel,
+		})
+		Theme.label({
+			Text = prof.icon .. "  " .. prof.label .. (if id == current then "  ✓" else ""),
+			Font = Theme.fontBold,
+			TextSize = 15,
+			Size = UDim2.new(0.55, 0, 0, 20),
+			Position = UDim2.fromOffset(10, 4),
+			Parent = button,
+		})
+		local hours = if job and job.hours
+			then string.format("%s–%s", Util.formatHour(job.hours[1]), Util.formatHour(job.hours[2]))
+			else "Kahit anong oras"
+		Theme.label({
+			Text = string.format("~%s/shift  ·  %s  ·  %s", Util.formatPesos(job and job.pay or 0), hours, table.concat(icons, " ")),
+			TextSize = 12,
+			TextColor3 = Theme.textDim,
+			Size = UDim2.new(1, -20, 0, 18),
+			Position = UDim2.fromOffset(10, 24),
+			Parent = button,
+		})
+		local need = Config.Education[prof.education]
+		Theme.label({
+			Text = if unlocked then "Bukas" else "🔒 " .. (if need then need.label else prof.education),
+			TextSize = 12,
+			TextColor3 = if unlocked then Color3.fromRGB(140, 230, 140) else Color3.fromRGB(240, 150, 140),
+			TextXAlignment = Enum.TextXAlignment.Right,
+			Size = UDim2.new(0.45, -10, 0, 20),
+			Position = UDim2.new(0.55, 0, 0, 4),
+			Parent = button,
+		})
+		button.Activated:Connect(function()
+			if unlocked then
+				Remotes.ChooseProfession:FireServer(id)
+				closeStation()
+			end
+		end)
+	end
+	local close = Theme.button({
+		Text = "Isara",
+		Size = UDim2.fromOffset(120, 36),
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -10),
+		Parent = panel,
+	})
+	close.Activated:Connect(closeStation)
 end
 
 function Menus.init(screenGui: ScreenGui)
 	gui = screenGui
+	Remotes.OpenCareer.OnClientEvent:Connect(Menus.openCareer)
 	Remotes.OpenMenu.OnClientEvent:Connect(function(model, stationId)
 		if typeof(model) == "Instance" and model:IsA("Model") then
 			Menus.openStation(model, stationId)
@@ -4515,7 +6093,8 @@ function Menus.init(screenGui: ScreenGui)
 	end)
 	-- keep an open side panel live
 	player.AttributeChanged:Connect(function(name)
-		if sidePanelKind and (name:sub(1, 6) == "Skill_" or name:sub(1, 4) == "Rel_") then
+		local identityField = name == "Profession" or name == "Age" or name == "HomeCity" or name == "Education"
+		if sidePanelKind and (name:sub(1, 6) == "Skill_" or name:sub(1, 4) == "Rel_" or identityField) then
 			local kind = sidePanelKind
 			closeSide()
 			Menus.toggle(kind)
@@ -4530,7 +6109,241 @@ end
 
 return Menus
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX25"><Properties><string name="Name">Theme</string><ProtectedString name="Source"><![CDATA[--[[
+<Item class="ModuleScript" referent="RBX29"><Properties><string name="Name">SpinWheel</string><ProtectedString name="Source"><![CDATA[--[[
+	SpinWheel — "Ikot ng Kapalaran", the first thing a new player sees.
+	The server has already rolled the result (so it can't be re-rolled by rejoining);
+	this screen lets the player press "Iikot!" and watch four reels land on their life:
+	  Bayan (hometown) · Yaman (wealth) · Swerte (luck) · DNA (talent)
+	The odds are shown under each reel.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Theme = require(script.Parent.Theme)
+
+local create = Theme.create
+local player = Players.LocalPlayer
+
+local SpinWheel = {}
+
+local function percent(weight: number, total: number): string
+	return string.format("%d%%", math.floor(weight / total * 100 + 0.5))
+end
+
+-- Build the reel definitions: { title, options = {label...}, odds = {text...}, result = index }
+local function reels()
+	local list = {}
+	local cityLabels, cityOdds, cityTotal = {}, {}, 0
+	for _, id in Config.CityOrder do
+		cityTotal += Config.Cities[id].weight
+	end
+	local resultCity = 1
+	for i, id in Config.CityOrder do
+		local c = Config.Cities[id]
+		cityLabels[i] = c.icon .. " " .. c.name
+		cityOdds[i] = c.name .. " " .. percent(c.weight, cityTotal)
+		if id == player:GetAttribute("Hometown") then
+			resultCity = i
+		end
+	end
+	table.insert(list, { title = "📍 Bayan", options = cityLabels, odds = cityOdds, result = resultCity })
+	for _, metric in Config.MetricOrder do
+		local m = Config.Metrics[metric]
+		local labels, odds, total = {}, {}, 0
+		for _, t in m.tiers do
+			total += t.weight
+		end
+		for i, t in m.tiers do
+			labels[i] = t.label
+			odds[i] = t.label .. " " .. percent(t.weight, total)
+		end
+		table.insert(list, {
+			title = m.icon .. " " .. m.label,
+			options = labels,
+			odds = odds,
+			result = player:GetAttribute(metric) or 2,
+		})
+	end
+	return list
+end
+
+function SpinWheel.show(gui: ScreenGui, onDone: () -> ())
+	local overlay = create("Frame", {
+		Name = "SpinWheel",
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 0.25,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 50,
+		Parent = gui,
+	})
+	local panel = Theme.panel({
+		Size = UDim2.new(0, 720, 0, 430),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		ZIndex = 51,
+		Parent = overlay,
+	})
+	create("UISizeConstraint", { MaxSize = Vector2.new(720, 430) }).Parent = panel
+	local uiScale = create("UIScale", { Name = "Scale" })
+	uiScale.Parent = panel
+
+	local function text(props)
+		props.ZIndex = 52
+		props.Parent = props.Parent or panel
+		return Theme.label(props)
+	end
+
+	text({
+		Text = "🎡 Ikot ng Kapalaran",
+		Font = Theme.fontTitle,
+		TextSize = 30,
+		TextColor3 = Theme.yellow,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		Size = UDim2.new(1, 0, 0, 36),
+		Position = UDim2.fromOffset(0, 14),
+	})
+	text({
+		Text = "Hindi mo pinipili kung saan ka isisilang. Ang mahalaga ay kung ano ang gagawin mo.",
+		TextSize = 15,
+		TextColor3 = Theme.textDim,
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		Size = UDim2.new(1, -40, 0, 36),
+		Position = UDim2.fromOffset(20, 52),
+	})
+
+	local defs = reels()
+	local reelLabels = {}
+	local reelWidth = 160
+	local startX = (720 - (#defs * reelWidth + (#defs - 1) * 12)) / 2
+	for i, def in defs do
+		local x = startX + (i - 1) * (reelWidth + 12)
+		local frame = create("Frame", {
+			BackgroundColor3 = Theme.bgLight,
+			BorderSizePixel = 0,
+			Size = UDim2.fromOffset(reelWidth, 190),
+			Position = UDim2.fromOffset(x, 100),
+			ZIndex = 52,
+			Parent = panel,
+		}, { Theme.corner(12) })
+		text({
+			Text = def.title,
+			Font = Theme.fontBold,
+			TextSize = 17,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			Size = UDim2.new(1, 0, 0, 26),
+			Position = UDim2.fromOffset(0, 8),
+			Parent = frame,
+		})
+		local window = create("Frame", {
+			BackgroundColor3 = Color3.fromRGB(20, 16, 14),
+			BorderSizePixel = 0,
+			Size = UDim2.new(1, -16, 0, 56),
+			Position = UDim2.fromOffset(8, 40),
+			ZIndex = 52,
+			Parent = frame,
+		}, { Theme.corner(10), Theme.stroke(Theme.yellow, 2) })
+		reelLabels[i] = text({
+			Text = "?",
+			Font = Theme.fontTitle,
+			TextSize = 20,
+			TextWrapped = true,
+			TextColor3 = Theme.text,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			Size = UDim2.fromScale(1, 1),
+			Parent = window,
+		})
+		text({
+			Text = table.concat(def.odds, "\n"),
+			TextSize = 13,
+			TextColor3 = Theme.textDim,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			Size = UDim2.new(1, -8, 0, 80),
+			Position = UDim2.fromOffset(4, 104),
+			Parent = frame,
+		})
+	end
+
+	local summary = text({
+		Text = "",
+		Font = Theme.fontBold,
+		TextSize = 16,
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		Size = UDim2.new(1, -40, 0, 44),
+		Position = UDim2.fromOffset(20, 300),
+	})
+
+	local button = Theme.button({
+		Text = "Iikot!",
+		TextSize = 22,
+		Font = Theme.fontTitle,
+		BackgroundColor3 = Theme.red,
+		Size = UDim2.fromOffset(220, 52),
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -18),
+		ZIndex = 52,
+		Parent = panel,
+	})
+
+	-- fit small (phone) screens
+	local function rescale()
+		local view = workspace.CurrentCamera.ViewportSize
+		local scale = math.min(1, (view.X - 24) / 720, (view.Y - 24) / 430)
+		uiScale.Scale = math.max(scale, 0.45)
+	end
+	rescale()
+	local resizeConn = workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale)
+
+	local state = "ready"
+	button.Activated:Connect(function()
+		if state == "ready" then
+			state = "spinning"
+			button.Text = "..."
+			for i, def in defs do
+				task.spawn(function()
+					local spins = 14 + i * 7
+					for n = 1, spins do
+						reelLabels[i].Text = def.options[(n % #def.options) + 1]
+						task.wait(0.05 + n / spins * 0.08)
+					end
+					reelLabels[i].Text = def.options[def.result]
+					reelLabels[i].TextColor3 = Theme.yellow
+					local pop = TweenService:Create(reelLabels[i], TweenInfo.new(0.25, Enum.EasingStyle.Back), { TextSize = 24 })
+					pop:Play()
+				end)
+			end
+			task.wait(4.6) -- the slowest reel takes ~3.8s
+			local city = Config.city(player:GetAttribute("Hometown"))
+			local papa = Config.Professions[player:GetAttribute("Papa")]
+			local mama = Config.Professions[player:GetAttribute("Mama")]
+			local talent = Config.Skills[player:GetAttribute("Talent")]
+			summary.Text = string.format(
+				"Isinilang ka sa %s. Si Papa ay %s at si Mama ay %s. Likas kang magaling sa %s.",
+				city.name,
+				papa and papa.label:lower() or "?",
+				mama and mama.label:lower() or "?",
+				talent and talent.label:lower() or "?"
+			)
+			button.Text = "Simulan ang Buhay!"
+			button.BackgroundColor3 = Theme.green
+			state = "done"
+		elseif state == "done" then
+			state = "closed"
+			resizeConn:Disconnect()
+			overlay:Destroy()
+			onDone()
+		end
+	end)
+end
+
+return SpinWheel
+]]></ProtectedString></Properties></Item>
+<Item class="ModuleScript" referent="RBX30"><Properties><string name="Name">Theme</string><ProtectedString name="Source"><![CDATA[--[[
 	Theme — colours, fonts and a tiny `create` helper for building UI in code.
 	Palette borrows from the Philippine flag (blue, red, sun-yellow) over warm wood tones.
 ]]

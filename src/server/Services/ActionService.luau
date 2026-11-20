@@ -29,6 +29,7 @@ type ActiveAction = {
 	elapsed: number,
 	paidFraction: number,
 	xpFraction: number,
+	xpMult: number,
 	seat: Seat?,
 	lying: boolean,
 	effectMult: number,
@@ -249,6 +250,11 @@ local function begin(player: Player, actionId: string, station: Model?): (boolea
 		return false, nil
 	end
 
+	if def.profession and player:GetAttribute("Profession") ~= def.profession then
+		local prof = Config.Professions[def.profession]
+		return false, "💼 Hindi ito ang trabaho mo. Mag-apply muna bilang " .. prof.label .. " sa PESO Office."
+	end
+
 	if def.hours and not Util.inHours(Lighting.ClockTime, def.hours) then
 		return false, string.format(
 			"⏰ Hindi pa pwede ngayon. Bukas mula %s hanggang %s.",
@@ -264,7 +270,8 @@ local function begin(player: Player, actionId: string, station: Model?): (boolea
 		end
 	end
 
-	local cost = def.cost or 0
+	local cityId = station and station:GetAttribute("City")
+	local cost = Config.scaledCost(def, cityId)
 	local pesos = player:GetAttribute("Pesos") or 0
 	if cost > pesos then
 		return false, "💸 Kulang ang pera mo! Kailangan mo ng " .. Util.formatPesos(cost) .. "."
@@ -289,7 +296,10 @@ local function begin(player: Player, actionId: string, station: Model?): (boolea
 		seat = nil,
 		lying = false,
 		effectMult = if def.skillBoost then 1 + level * Config.SkillEffectBonus else 1,
-		payMult = NeedsService.getMood(player).payMult * (if def.payBoost then 1 + level * Config.SkillPayBonus else 1),
+		payMult = NeedsService.getMood(player).payMult
+			* (if def.payBoost then 1 + level * Config.SkillPayBonus else 1)
+			* Config.city(cityId).payMult,
+		xpMult = Config.xpMultiplier(player, def.skill),
 	}
 	active[player] = state
 
@@ -361,7 +371,7 @@ local function step(player: Player, state: ActiveAction, dt: number)
 	end
 
 	if def.skill and def.skillXp then
-		state.xpFraction += def.skillXp * frac
+		state.xpFraction += def.skillXp * frac * state.xpMult
 		if state.xpFraction >= 1 then
 			local whole = math.floor(state.xpFraction)
 			state.xpFraction -= whole

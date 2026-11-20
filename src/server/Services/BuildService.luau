@@ -29,6 +29,7 @@ function BuildService.spawn(lot, id: string, x: number, y: number, z: number, ro
 		model:SetAttribute("OwnerUserId", lot.owner.UserId)
 	end
 	model:SetAttribute("DisplayName", Config.FurnitureById[id].name)
+	model:SetAttribute("City", lot.city)
 	model:PivotTo(lot.origin * CFrame.new(x, y, z) * CFrame.Angles(0, math.rad(rotation), 0))
 	model.Parent = lot.furniture
 	StationService.make(model)
@@ -36,6 +37,8 @@ function BuildService.spawn(lot, id: string, x: number, y: number, z: number, ro
 end
 
 -- Furniture → plain table for saving (lot-relative, so it loads on any lot).
+-- Items inside the house store `fy` (height above the house floor) so they still sit
+-- correctly if the player later gets a lot with a different house type.
 function BuildService.serialize(player: Player): { any }
 	local lot = LotService.get(player)
 	local list = {}
@@ -47,17 +50,24 @@ function BuildService.serialize(player: Player): { any }
 		if id and model:IsA("Model") then
 			local rel = lot.origin:ToObjectSpace(model:GetPivot())
 			local _, ry, _ = rel:ToOrientation()
-			table.insert(list, {
+			local entry = {
 				id = id,
 				x = math.floor(rel.X * 100 + 0.5) / 100,
-				y = math.floor(rel.Y * 100 + 0.5) / 100,
 				z = math.floor(rel.Z * 100 + 0.5) / 100,
 				r = (math.floor(math.deg(ry) / 90 + 0.5) * 90) % 360,
-			})
+			}
+			if Config.insideHouse(rel.X, rel.Z) then
+				entry.fy = math.floor((rel.Y - lot.floorY) * 100 + 0.5) / 100
+			else
+				entry.y = math.floor(rel.Y * 100 + 0.5) / 100
+			end
+			table.insert(list, entry)
 		end
 	end
 	return list
 end
+
+local LEGACY_FLOOR_Y = 4 -- v0.1 saves were all bahay kubo
 
 function BuildService.load(player: Player, furniture: { any }?)
 	local lot = LotService.get(player)
@@ -66,7 +76,20 @@ function BuildService.load(player: Player, furniture: { any }?)
 	end
 	lot.furniture:ClearAllChildren()
 	for _, item in furniture or Config.StarterFurniture do
-		BuildService.spawn(lot, item.id, item.x, item.y, item.z, item.r or 0)
+		if type(item) ~= "table" or type(item.x) ~= "number" or type(item.z) ~= "number" then
+			continue
+		end
+		local y
+		if type(item.fy) == "number" then
+			y = lot.floorY + item.fy
+		elseif item.inHouse then
+			y = lot.floorY + (item.y or 0)
+		elseif type(item.y) == "number" and Config.insideHouse(item.x, item.z) then
+			y = lot.floorY + (item.y - LEGACY_FLOOR_Y)
+		else
+			y = item.y or 0
+		end
+		BuildService.spawn(lot, item.id, item.x, y, item.z, item.r or 0)
 	end
 end
 

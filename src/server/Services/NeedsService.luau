@@ -58,7 +58,9 @@ local function applyConsequences(player: Player)
 	local currentId = actions and actions.currentActionId(player)
 
 	-- Bagsak sa pagod: fall asleep on the spot
-	if NeedsService.get(player, "Energy") <= 0 and not busy and actions then
+	local seated = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	seated = seated and seated.SeatPart ~= nil
+	if NeedsService.get(player, "Energy") <= 0 and not busy and not seated and actions then
 		Remotes.notify(player, "😵 Bumagsak ka sa sobrang pagod! Nakatulog ka sa sahig.", "bad")
 		actions.startSpecial(player, "Nahimatay")
 	end
@@ -87,7 +89,11 @@ function NeedsService.tick(dt: number)
 		end
 		for _, id in Config.NeedOrder do
 			if not (actions and actions.isBoosting(player, id)) then
-				NeedsService.add(player, id, -Config.Needs[id].decayPerMinute / 60 * dt)
+				local mult = 1
+				if id == "Social" then
+					mult = Config.YamanEffects.socialDecayMult[player:GetAttribute("Yaman") or 2] or 1
+				end
+				NeedsService.add(player, id, -Config.Needs[id].decayPerMinute / 60 * dt * mult)
 			end
 		end
 		local mood = NeedsService.getMood(player)

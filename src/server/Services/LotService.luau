@@ -1,9 +1,10 @@
 --[[
-	LotService — six residential lots (with a bahay kubo each) around the plaza.
-	Each joining player is given a free lot; it is cleared when they leave.
+	LotService — residential lots in each of the three cities.
+	Baybay Alon and San Bukid lots have a bahay kubo; Metro Dakila lots have a concrete bungalow.
+	A joining player gets a free lot in their hometown if possible, otherwise any free lot.
 
 	Lot model layout (in workspace.Lots):
-	  LotN (Model, attribute OwnerUserId)
+	  <City>Lot<N> (Model, attributes OwnerUserId, City, LotIndex)
 	    ├─ Origin    invisible part; its CFrame is the lot's coordinate frame (+Z faces the road)
 	    ├─ Furniture folder of placed furniture models
 	    └─ … plot, fence, house, sign
@@ -11,6 +12,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Config = require(ReplicatedStorage.Shared.Config)
 local Models = require(ReplicatedStorage.Shared.Models)
 local Util = require(ReplicatedStorage.Shared.Util)
 
@@ -18,6 +20,8 @@ local LotService = {}
 
 export type Lot = {
 	index: number,
+	city: string,
+	floorY: number,
 	origin: CFrame,
 	model: Model,
 	furniture: Folder,
@@ -26,8 +30,8 @@ export type Lot = {
 
 local lots: { Lot } = {}
 
--- Lot centres and the direction toward the road they face.
-local LOT_LAYOUT = {
+-- Lot centres relative to each city's origin, and the direction toward the road.
+local LOT_OFFSETS = {
 	{ pos = Vector3.new(-60, 0.2, 115), toRoad = Vector3.new(0, 0, -1) },
 	{ pos = Vector3.new(0, 0.2, 115), toRoad = Vector3.new(0, 0, -1) },
 	{ pos = Vector3.new(60, 0.2, 115), toRoad = Vector3.new(0, 0, -1) },
@@ -49,41 +53,68 @@ function LotService.init()
 	folder.Name = "Lots"
 	folder.Parent = workspace
 
-	for index, layout in LOT_LAYOUT do
-		-- lookAt makes -Z face the target; we want +Z to face the road.
-		local origin = CFrame.lookAt(layout.pos, layout.pos - layout.toRoad)
-		local model = Models.build("Lot")
-		model.Name = "Lot" .. index
-		model:PivotTo(origin)
+	for _, cityId in Config.CityOrder do
+		local city = Config.Cities[cityId]
+		local style = city.house
+		for n, layout in LOT_OFFSETS do
+			local pos = city.origin + layout.pos
+			-- lookAt makes -Z face the target; we want +Z to face the road.
+			local origin = CFrame.lookAt(pos, pos - layout.toRoad)
+			local model = Models.build("Lot", style)
+			model.Name = cityId .. "Lot" .. n
+			model:PivotTo(origin)
 
-		Util.part({
-			Name = "Origin",
-			Size = Vector3.new(1, 1, 1),
-			CFrame = origin,
-			Transparency = 1,
-			CanCollide = false,
-			CanTouch = false,
-			CanQuery = false,
-			Parent = model,
-		})
-		local furniture = Instance.new("Folder")
-		furniture.Name = "Furniture"
-		furniture.Parent = model
+			Util.part({
+				Name = "Origin",
+				Size = Vector3.new(1, 1, 1),
+				CFrame = origin,
+				Transparency = 1,
+				CanCollide = false,
+				CanTouch = false,
+				CanQuery = false,
+				Parent = model,
+			})
+			local furniture = Instance.new("Folder")
+			furniture.Name = "Furniture"
+			furniture.Parent = model
 
-		model:SetAttribute("LotIndex", index)
-		model.Parent = folder
+			local index = #lots + 1
+			model:SetAttribute("LotIndex", index)
+			model:SetAttribute("City", cityId)
+			model.Parent = folder
 
-		lots[index] = { index = index, origin = origin, model = model, furniture = furniture, owner = nil }
+			lots[index] = {
+				index = index,
+				city = cityId,
+				floorY = Config.HouseTypes[style].floorY,
+				origin = origin,
+				model = model,
+				furniture = furniture,
+				owner = nil,
+			}
+		end
 	end
 end
 
-function LotService.assign(player: Player): Lot?
+local function claim(lot: Lot, player: Player)
+	lot.owner = player
+	lot.model:SetAttribute("OwnerUserId", player.UserId)
+	player:SetAttribute("LotIndex", lot.index)
+	player:SetAttribute("HomeCity", lot.city)
+	setSign(lot, "Bahay ni " .. player.DisplayName)
+end
+
+-- Prefer a lot in `preferredCity`; fall back to any free lot.
+function LotService.assign(player: Player, preferredCity: string?): Lot?
+	for _, lot in lots do
+		if lot.owner == nil and lot.city == preferredCity then
+			claim(lot, player)
+			return lot
+		end
+	end
 	for _, lot in lots do
 		if lot.owner == nil then
-			lot.owner = player
-			lot.model:SetAttribute("OwnerUserId", player.UserId)
-			player:SetAttribute("LotIndex", lot.index)
-			setSign(lot, "Bahay ni " .. player.DisplayName)
+			claim(lot, player)
 			return lot
 		end
 	end
